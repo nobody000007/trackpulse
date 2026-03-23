@@ -137,6 +137,11 @@ export function EmployeeList({ employees: empProp, loading: loadProp, error: err
                       <span className="flex items-center gap-1 text-xs text-gray-500">
                         <BookOpen className="w-3 h-3 text-indigo-400" />
                         <span className="truncate max-w-[140px] font-medium">{asgn.planTitle}</span>
+                        {(asgn.activePlansCount ?? 1) > 1 && (
+                          <span className="px-1.5 py-0.5 bg-indigo-100 text-indigo-700 text-[10px] font-semibold rounded-full">
+                            +{asgn.activePlansCount - 1} more
+                          </span>
+                        )}
                       </span>
                       {asgn.currentTask && (
                         <span className="flex items-center gap-1 text-xs text-blue-600 bg-blue-50 rounded px-1.5 py-0.5">

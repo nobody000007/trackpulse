@@ -3,11 +3,14 @@ import { useState } from "react";
 import { TrendingUp, CheckCircle2, Zap, BookOpen, Clock } from "lucide-react";
 import { TrackingView } from "./tracking-view";
 
+interface Attachment {
+  id: string; filename: string; blobUrl: string; fileType: string; fileSize: number;
+}
 interface Phase {
   id: string;
   title: string;
   description?: string | null;
-  tasks: { id: string; title: string; description?: string | null; type: string; priority: string; url?: string | null; content?: string | null; dueDate?: string | null }[];
+  tasks: { id: string; title: string; description?: string | null; type: string; priority: string; url?: string | null; content?: string | null; dueDate?: string | null; attachments?: Attachment[] }[];
 }
 
 interface Progress {
@@ -37,7 +40,9 @@ export function TrackingPageClient({ token, employeeName, planTitle, phases, pro
   const totalTasks = phases.reduce((s, p) => s + p.tasks.length, 0);
   const totalPhases = phases.length;
   const linkTaskCount = phases.flatMap(p => p.tasks).filter(t => t.type === "LINK").length;
-  const totalLinkSecs = Object.values(linkReadSeconds).reduce((a, b) => a + b, 0);
+  const [totalLinkSecs, setTotalLinkSecs] = useState(
+    () => Object.values(linkReadSeconds).reduce((a, b) => a + b, 0)
+  );
 
   const [completedCount, setCompletedCount] = useState(
     () => progress.filter((p) => p.status === "COMPLETED").length
@@ -54,6 +59,10 @@ export function TrackingPageClient({ token, employeeName, planTitle, phases, pro
 
   function handleProgressChange(completed: number) {
     setCompletedCount(completed);
+  }
+
+  function handleReadTimeChange(addedSecs: number) {
+    setTotalLinkSecs((prev) => prev + addedSecs);
   }
 
   return (
@@ -172,6 +181,7 @@ export function TrackingPageClient({ token, employeeName, planTitle, phases, pro
           progress={progress as any}
           linkReadSeconds={linkReadSeconds}
           onProgressChange={handleProgressChange}
+          onReadTimeChange={handleReadTimeChange}
         />
       </main>
     </div>

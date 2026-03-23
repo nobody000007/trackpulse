@@ -10,7 +10,12 @@ export default async function TrackPage({ params }: { params: { token: string } 
       plan: {
         include: {
           phases: {
-            include: { tasks: { orderBy: { orderIndex: "asc" } } },
+            include: {
+              tasks: {
+                include: { attachments: true },
+                orderBy: { orderIndex: "asc" },
+              },
+            },
             orderBy: { orderIndex: "asc" },
           },
         },

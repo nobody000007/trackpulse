@@ -322,20 +322,13 @@ export function PlanBuilder() {
                                 </div>
                               )}
 
-                              {/* DOCUMENT: inline content editor */}
+                              {/* DOCUMENT: hint to attach files after saving */}
                               {task.type === "DOCUMENT" && (
-                                <div className="space-y-1">
-                                  <label className="text-xs font-medium text-gray-500 flex items-center gap-1.5">
-                                    <FileText className="w-3.5 h-3.5" /> Document Content
-                                  </label>
-                                  <textarea
-                                    value={task.content}
-                                    onChange={(e) => updateTask(phaseIdx, taskIdx, "content", e.target.value)}
-                                    placeholder="Paste or write the documentation content here. Employees will read this directly in the training page — time spent reading is tracked automatically."
-                                    rows={8}
-                                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-y font-mono leading-relaxed"
-                                  />
-                                  <p className="text-xs text-gray-400">Tip: paste documentation, instructions, or any text content. Reading time is tracked automatically.</p>
+                                <div className="flex items-start gap-2 px-3 py-2.5 bg-indigo-50 border border-indigo-100 rounded-lg">
+                                  <FileText className="w-3.5 h-3.5 text-indigo-400 mt-0.5 shrink-0" />
+                                  <p className="text-xs text-indigo-600 leading-relaxed">
+                                    Save the plan first, then attach files (PDF, Word, images…) directly to this task on the plan detail page.
+                                  </p>
                                 </div>
                               )}
 

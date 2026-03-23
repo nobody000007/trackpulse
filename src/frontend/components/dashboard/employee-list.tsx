@@ -90,12 +90,37 @@ export function EmployeeList() {
           {/* Rows */}
           <div className="divide-y divide-slate-50">
             {employees.map((emp: any, empIdx: number) => {
-              const asgn = emp.assignments?.[0];
+              const assignments: any[] = emp.assignments ?? [];
               const initials = emp.name.split(" ").map((n: string) => n[0]).join("").toUpperCase().slice(0, 2);
-              const risk = (asgn?.riskLevel ?? "GREEN") as keyof typeof RISK_CONFIG;
-              const cfg = RISK_CONFIG[risk];
-              const ago = timeAgo(asgn?.lastActivity ?? null);
               const avatarGrad = avatarColors[empIdx % avatarColors.length];
+
+              // Aggregate across ALL active plans
+              const totalCompleted = assignments.reduce((s: number, a: any) => s + (a.completedTasks ?? 0), 0);
+              const totalTasks = assignments.reduce((s: number, a: any) => s + (a.totalTasks ?? 0), 0);
+              const overallRate = totalTasks > 0 ? Math.round((totalCompleted / totalTasks) * 100) : 0;
+
+              // Worst risk across all plans
+              const RISK_RANK: Record<string, number> = { GREEN: 0, YELLOW: 1, RED: 2 };
+              const risk = (assignments.reduce((worst: string, a: any) => {
+                return (RISK_RANK[a.riskLevel] ?? 0) > (RISK_RANK[worst] ?? 0) ? a.riskLevel : worst;
+              }, "GREEN")) as keyof typeof RISK_CONFIG;
+
+              // Most recent activity across all plans
+              const lastActivity = assignments.reduce((latest: string | null, a: any) => {
+                if (!a.lastActivity) return latest;
+                if (!latest) return a.lastActivity;
+                return new Date(a.lastActivity) > new Date(latest) ? a.lastActivity : latest;
+              }, null);
+
+              const cfg = RISK_CONFIG[risk];
+              const ago = timeAgo(lastActivity);
+
+              // Plan label: single plan title or "N plans"
+              const planLabel = assignments.length === 0
+                ? null
+                : assignments.length === 1
+                ? assignments[0].plan?.title
+                : `${assignments.length} active plans`;
 
               return (
                 <Link
@@ -117,10 +142,10 @@ export function EmployeeList() {
                   </div>
 
                   <div className="min-w-0 pr-2">
-                    {asgn ? (
+                    {planLabel ? (
                       <div className="flex items-center gap-1.5">
                         <BookOpen className="w-3.5 h-3.5 text-indigo-300 shrink-0" />
-                        <span className="text-xs font-medium text-gray-600 truncate">{asgn.plan?.title}</span>
+                        <span className="text-xs font-medium text-gray-600 truncate">{planLabel}</span>
                       </div>
                     ) : (
                       <span className="text-xs text-slate-300 italic">None</span>
@@ -128,14 +153,14 @@ export function EmployeeList() {
                   </div>
 
                   <div>
-                    {asgn ? (
+                    {assignments.length > 0 ? (
                       <div className="space-y-1">
                         <div className="flex items-center justify-between text-xs">
-                          <span className="text-gray-500">{asgn.completedTasks}/{asgn.totalTasks}</span>
-                          <span className="font-bold text-gray-800">{asgn.completionRate}%</span>
+                          <span className="text-gray-500">{totalCompleted}/{totalTasks}</span>
+                          <span className="font-bold text-gray-800">{overallRate}%</span>
                         </div>
                         <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                          <div className={`h-full rounded-full ${cfg.bar}`} style={{ width: `${asgn.completionRate}%` }} />
+                          <div className={`h-full rounded-full ${cfg.bar}`} style={{ width: `${overallRate}%` }} />
                         </div>
                       </div>
                     ) : <span className="text-xs text-slate-200">—</span>}
@@ -147,7 +172,7 @@ export function EmployeeList() {
                   </div>
 
                   <div>
-                    {asgn ? (
+                    {assignments.length > 0 ? (
                       <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold ${cfg.badge}`}>
                         {cfg.label}
                       </span>

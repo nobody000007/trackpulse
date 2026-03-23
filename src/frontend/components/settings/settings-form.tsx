@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
-import { User, Mail, Lock, CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
+import { signOut } from "next-auth/react";
+import { User, Mail, Lock, CheckCircle2, AlertCircle, Loader2, Trash2 } from "lucide-react";
 
 interface SettingsFormProps {
   user: { name: string; email: string };
@@ -12,8 +13,10 @@ export function SettingsForm({ user }: SettingsFormProps) {
   const [newPassword, setNewPassword] = useState("");
   const [savingProfile, setSavingProfile] = useState(false);
   const [savingPassword, setSavingPassword] = useState(false);
+  const [deletingAccount, setDeletingAccount] = useState(false);
   const [profileMsg, setProfileMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [passwordMsg, setPasswordMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState("");
 
   async function saveProfile(e: React.FormEvent) {
     e.preventDefault();
@@ -58,6 +61,18 @@ export function SettingsForm({ user }: SettingsFormProps) {
       setPasswordMsg({ type: "error", text: err.message });
     } finally {
       setSavingPassword(false);
+    }
+  }
+
+  async function deleteAccount() {
+    if (deleteConfirm !== "DELETE") return;
+    setDeletingAccount(true);
+    try {
+      const res = await fetch("/api/settings", { method: "DELETE" });
+      if (!res.ok) throw new Error("Failed to delete account");
+      await signOut({ callbackUrl: "/login" });
+    } catch {
+      setDeletingAccount(false);
     }
   }
 
@@ -155,10 +170,32 @@ export function SettingsForm({ user }: SettingsFormProps) {
       {/* Danger zone */}
       <div className="bg-white rounded-2xl border border-red-200 shadow-sm p-6">
         <h2 className="font-semibold text-red-700 mb-1">Danger Zone</h2>
-        <p className="text-sm text-gray-500 mb-4">These actions are permanent and cannot be undone.</p>
-        <button className="px-5 py-2.5 border border-red-300 text-red-600 text-sm font-semibold rounded-lg hover:bg-red-50 transition-colors">
-          Delete Account
-        </button>
+        <p className="text-sm text-gray-500 mb-5">
+          Permanently deletes your account, all employees, plans, attachments, and training data. This cannot be undone.
+        </p>
+        <div className="space-y-3">
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium text-gray-700">
+              Type <span className="font-mono font-bold text-red-600">DELETE</span> to confirm
+            </label>
+            <input
+              type="text"
+              value={deleteConfirm}
+              onChange={(e) => setDeleteConfirm(e.target.value)}
+              placeholder="DELETE"
+              className="w-full max-w-xs px-3 py-2.5 border border-red-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-400 placeholder:text-gray-300"
+            />
+          </div>
+          <button
+            onClick={deleteAccount}
+            disabled={deletingAccount || deleteConfirm !== "DELETE"}
+            className="flex items-center gap-2 px-5 py-2.5 bg-red-600 text-white text-sm font-semibold rounded-lg hover:bg-red-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          >
+            {deletingAccount
+              ? <><Loader2 className="w-4 h-4 animate-spin" /> Deleting…</>
+              : <><Trash2 className="w-4 h-4" /> Delete my account</>}
+          </button>
+        </div>
       </div>
     </div>
   );

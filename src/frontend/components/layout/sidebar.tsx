@@ -1,13 +1,35 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, BookOpen, Users, TrendingUp, Settings, ChevronRight } from "lucide-react";
+import { LayoutDashboard, BookOpen, Users, TrendingUp, Settings, ChevronRight, BarChart2, Inbox } from "lucide-react";
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/plans", label: "Plans", icon: BookOpen },
   { href: "/employees", label: "Employees", icon: Users },
 ];
+
+const insightItems = [
+  { href: "/analytics", label: "Analytics", icon: BarChart2 },
+  { href: "/inbox", label: "Inbox", icon: Inbox },
+];
+
+function NavLink({ href, label, icon: Icon, active }: { href: string; label: string; icon: React.ElementType; active: boolean }) {
+  return (
+    <Link
+      href={href}
+      className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all group ${
+        active
+          ? "bg-indigo-500/15 text-white"
+          : "text-slate-500 hover:bg-white/[0.05] hover:text-slate-200"
+      }`}
+    >
+      <Icon className={`w-4 h-4 shrink-0 transition-colors ${active ? "text-indigo-400" : "text-slate-600 group-hover:text-slate-400"}`} />
+      <span className="flex-1">{label}</span>
+      {active && <ChevronRight className="w-3 h-3 text-indigo-400/60" />}
+    </Link>
+  );
+}
 
 export function Sidebar() {
   const pathname = usePathname();
@@ -26,44 +48,32 @@ export function Sidebar() {
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
-        <p className="text-[10px] font-semibold text-slate-600 uppercase tracking-[0.1em] px-3 mb-3">Menu</p>
-        {navItems.map((item) => {
-          const active = pathname === item.href || pathname.startsWith(item.href + "/");
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all group ${
-                active
-                  ? "bg-indigo-500/15 text-white"
-                  : "text-slate-500 hover:bg-white/[0.05] hover:text-slate-200"
-              }`}
-            >
-              {active && (
-                <span className="absolute left-3 w-0.5 h-5 bg-indigo-400 rounded-full" />
-              )}
-              <item.icon className={`w-4 h-4 shrink-0 transition-colors ${active ? "text-indigo-400" : "text-slate-600 group-hover:text-slate-400"}`} />
-              <span className="flex-1">{item.label}</span>
-              {active && <ChevronRight className="w-3 h-3 text-indigo-400/60" />}
-            </Link>
-          );
-        })}
+      <nav className="flex-1 px-3 py-4 overflow-y-auto space-y-4">
+        <div className="space-y-0.5">
+          <p className="text-[10px] font-semibold text-slate-600 uppercase tracking-[0.1em] px-3 mb-2">Menu</p>
+          {navItems.map((item) => {
+            const active = pathname === item.href || pathname.startsWith(item.href + "/");
+            return <NavLink key={item.href} href={item.href} label={item.label} icon={item.icon} active={active} />;
+          })}
+        </div>
+
+        <div className="space-y-0.5">
+          <p className="text-[10px] font-semibold text-slate-600 uppercase tracking-[0.1em] px-3 mb-2">Insights</p>
+          {insightItems.map((item) => {
+            const active = pathname === item.href || pathname.startsWith(item.href + "/");
+            return <NavLink key={item.href} href={item.href} label={item.label} icon={item.icon} active={active} />;
+          })}
+        </div>
       </nav>
 
       {/* Bottom */}
-      <div className="px-3 pb-4 space-y-0.5 border-t border-white/[0.06] pt-3">
-        <Link
+      <div className="px-3 pb-4 border-t border-white/[0.06] pt-3">
+        <NavLink
           href="/settings"
-          className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all group ${
-            pathname.startsWith("/settings")
-              ? "bg-indigo-500/15 text-white"
-              : "text-slate-500 hover:bg-white/[0.05] hover:text-slate-200"
-          }`}
-        >
-          <Settings className="w-4 h-4 shrink-0 text-slate-600 group-hover:text-slate-400" />
-          Settings
-        </Link>
+          label="Settings"
+          icon={Settings}
+          active={pathname.startsWith("/settings")}
+        />
       </div>
     </aside>
   );

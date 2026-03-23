@@ -5,8 +5,9 @@ import { useEmployees } from "@/frontend/hooks/use-employees";
 import {
   ChevronDown, ChevronRight, Users, Calendar, Layers,
   Link as LinkIcon, AlertCircle, Loader2, UserPlus, Copy, CheckCheck,
-  FileText, Zap, Wrench, BookOpen, ExternalLink
+  FileText, Zap, Wrench, BookOpen, ExternalLink, Paperclip
 } from "lucide-react";
+import { TaskAttachments, type Attachment } from "./task-attachments";
 
 const TASK_TYPE_COLORS: Record<string, string> = {
   READ: "bg-blue-50 text-blue-700 border-blue-200",
@@ -30,6 +31,7 @@ interface Task {
   priority: string;
   url?: string | null;
   dueDate?: string | null;
+  attachments: Attachment[];
 }
 interface Phase { id: string; title: string; orderIndex: number; tasks: Task[] }
 interface Assignment {
@@ -200,6 +202,11 @@ export function PlanDetail({ planId }: { planId: string }) {
                               <span className={`text-xs font-medium ${PRIORITY_COLORS[task.priority] ?? "text-gray-400"}`}>
                                 {task.priority}
                               </span>
+                              {task.attachments.length > 0 && (
+                                <span className="flex items-center gap-1 text-[10px] text-slate-400 font-medium">
+                                  <Paperclip className="w-3 h-3" />{task.attachments.length}
+                                </span>
+                              )}
                             </div>
                             {task.description && (
                               <p className="text-xs text-gray-500 mt-0.5 leading-relaxed">{task.description}</p>
@@ -212,6 +219,9 @@ export function PlanDetail({ planId }: { planId: string }) {
                                 <ExternalLink className="w-3 h-3" /> {task.url}
                               </a>
                             )}
+                            <div className="mt-2">
+                              <TaskAttachments taskId={task.id} initial={task.attachments} />
+                            </div>
                           </div>
                         </li>
                       ))}

@@ -19,10 +19,8 @@ export class EmployeeRepository {
               include: { task: { select: { id: true, title: true, type: true } } },
               orderBy: { updatedAt: "desc" },
             },
-            _count: { select: { progress: true } },
           },
           orderBy: { assignedAt: "desc" },
-          take: 1,
         },
         _count: { select: { assignments: true } },
       },
@@ -42,33 +40,44 @@ export class EmployeeRepository {
     const lastEventMap = new Map(lastEvents.map((e) => [e.assignment_id, e.timestamp]));
 
     return employees.map((emp) => {
-      const assignment = emp.assignments[0] ?? null;
-      if (!assignment) return { ...emp, completionRate: 0, riskLevel: "GREEN", lastActivity: null, currentTask: null };
+      if (emp.assignments.length === 0) {
+        return { ...emp, riskLevel: "GREEN" as const, currentAssignment: null, lastActivity: null };
+      }
 
-      const completedCount = assignment.progress.filter((p) => p.status === "COMPLETED").length;
-      const inProgressTask = assignment.progress.find((p) => p.status === "IN_PROGRESS");
-      const lastActivity = lastEventMap.get(assignment.id) ?? null;
-      const daysSinceActivity = lastActivity
-        ? Math.floor((Date.now() - new Date(lastActivity).getTime()) / (1000 * 60 * 60 * 24))
+      // Aggregate most recent activity across ALL active assignments
+      let mostRecentActivity: Date | null = null;
+      for (const a of emp.assignments) {
+        const evt = lastEventMap.get(a.id);
+        if (evt && (!mostRecentActivity || evt > mostRecentActivity)) mostRecentActivity = evt;
+      }
+
+      const daysSinceActivity = mostRecentActivity
+        ? Math.floor((Date.now() - new Date(mostRecentActivity).getTime()) / (1000 * 60 * 60 * 24))
         : 999;
 
       let riskLevel: "GREEN" | "YELLOW" | "RED" = "GREEN";
       if (daysSinceActivity >= 3) riskLevel = "RED";
       else if (daysSinceActivity >= 1) riskLevel = "YELLOW";
 
+      // Primary = most recently assigned; find first in-progress task across all plans
+      const primary = emp.assignments[0];
+      const inProgressTask = emp.assignments
+        .flatMap((a) => a.progress)
+        .find((p) => p.status === "IN_PROGRESS");
+
       return {
         ...emp,
         currentAssignment: {
-          id: assignment.id,
-          planId: assignment.planId,
-          planTitle: (assignment.plan as any)?.title ?? "",
-          completedTasks: completedCount,
-          lastActivity,
+          id: primary.id,
+          planId: primary.planId,
+          planTitle: (primary.plan as any)?.title ?? "",
+          activePlansCount: emp.assignments.length,
+          lastActivity: mostRecentActivity,
           currentTask: inProgressTask ? (inProgressTask as any).task : null,
-          token: assignment.token,
+          token: primary.token,
         },
         riskLevel,
-        lastActivity,
+        lastActivity: mostRecentActivity,
       };
     });
   }

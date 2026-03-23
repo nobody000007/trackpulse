@@ -1,4 +1,5 @@
 import { prisma } from "@/backend/lib/prisma";
+import { deleteBlob } from "@/backend/lib/blob-storage";
 import type { CreatePlanInput, UpdatePlanInput } from "@/shared/types/api";
 
 export class PlanRepository {
@@ -66,6 +67,30 @@ export class PlanRepository {
   }
 
   static async delete(planId: string) {
+    // Fetch all blob URLs for attachments and submission files under this plan before deleting
+    const attachments = await prisma.$queryRaw<{ blob_url: string }[]>`
+      SELECT a.blob_url FROM attachments a
+      JOIN tasks t ON t.id = a.task_id
+      JOIN phases ph ON ph.id = t.phase_id
+      WHERE ph.plan_id = ${planId}
+    `;
+    const subFiles = await prisma.$queryRaw<{ blob_url: string }[]>`
+      SELECT sf.blob_url FROM submission_files sf
+      JOIN assignments asgn ON asgn.id = sf.assignment_id
+      WHERE asgn.plan_id = ${planId}
+    `;
+
+    // Delete blobs (non-fatal — DB delete proceeds regardless)
+    const allUrls = [...attachments, ...subFiles].map((r) => r.blob_url);
+    await Promise.allSettled(
+      allUrls.map(async (url) => {
+        try {
+          const blobName = new URL(url).pathname.split("/").slice(2).join("/");
+          await deleteBlob(blobName);
+        } catch {}
+      })
+    );
+
     return prisma.plan.delete({ where: { id: planId } });
   }
 }

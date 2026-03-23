@@ -43,7 +43,9 @@ export function TeamActivity() {
   }
 
   const employees = (stats?.employees ?? []) as any[];
-  const atRisk = employees.filter((e: any) => e.assignments?.[0]?.riskLevel === "RED");
+  const atRisk = employees.filter((e: any) =>
+    (e.assignments ?? []).some((a: any) => a.riskLevel === "RED")
+  );
 
   return (
     <div className="space-y-4">
@@ -111,11 +113,30 @@ export function TeamActivity() {
         ) : (
           <ul className="divide-y divide-slate-50">
             {employees.map((emp: any, empIdx: number) => {
-              const asgn = emp.assignments?.[0];
+              const assignments: any[] = emp.assignments ?? [];
               const initials = emp.name.split(" ").map((n: string) => n[0]).join("").toUpperCase().slice(0, 2);
-              const risk = asgn?.riskLevel ?? "GREEN";
-              const lastActivity = asgn?.lastActivity ?? null;
               const avatarGrad = avatarColors[empIdx % avatarColors.length];
+
+              // Worst risk across all plans
+              const RISK_RANK: Record<string, number> = { GREEN: 0, YELLOW: 1, RED: 2 };
+              const risk = assignments.reduce((worst: string, a: any) =>
+                (RISK_RANK[a.riskLevel] ?? 0) > (RISK_RANK[worst] ?? 0) ? a.riskLevel : worst
+              , "GREEN");
+
+              // Most recent activity across all plans
+              const lastActivity = assignments.reduce((latest: string | null, a: any) => {
+                if (!a.lastActivity) return latest;
+                if (!latest) return a.lastActivity;
+                return new Date(a.lastActivity) > new Date(latest) ? a.lastActivity : latest;
+              }, null);
+
+              // Aggregate completion across all plans
+              const totalCompleted = assignments.reduce((s: number, a: any) => s + (a.completedTasks ?? 0), 0);
+              const totalTasks = assignments.reduce((s: number, a: any) => s + (a.totalTasks ?? 0), 0);
+              const overallRate = totalTasks > 0 ? Math.round((totalCompleted / totalTasks) * 100) : 0;
+              const planLabel = assignments.length === 0 ? null
+                : assignments.length === 1 ? assignments[0].plan?.title
+                : `${assignments.length} plans`;
 
               return (
                 <li key={emp.id}>
@@ -128,8 +149,8 @@ export function TeamActivity() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-gray-900 truncate group-hover:text-indigo-600 transition-colors">{emp.name}</p>
-                      {asgn ? (
-                        <p className="text-xs text-slate-400 truncate">{asgn.completionRate}% · {asgn.plan?.title}</p>
+                      {planLabel ? (
+                        <p className="text-xs text-slate-400 truncate">{overallRate}% · {planLabel}</p>
                       ) : (
                         <p className="text-xs text-slate-300 italic">No plan</p>
                       )}

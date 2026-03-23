@@ -22,7 +22,7 @@ function PlanSkeleton() {
 }
 
 export function PlanList() {
-  const { plans, loading, error } = usePlans();
+  const { plans, loading, error, deletePlan } = usePlans();
 
   if (loading) {
     return (
@@ -63,7 +63,7 @@ export function PlanList() {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
       {plans.map((plan) => (
-        <PlanCard key={plan.id} plan={plan as any} />
+        <PlanCard key={plan.id} plan={plan as any} onDelete={deletePlan} />
       ))}
     </div>
   );

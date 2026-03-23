@@ -1,7 +1,6 @@
 "use client";
 import Link from "next/link";
-import { Calendar, Users, Layers, ArrowRight, Trash2 } from "lucide-react";
-import { usePlans } from "@/frontend/hooks/use-plans";
+import { Calendar, Users, Layers, ArrowRight, Trash2, Loader2 } from "lucide-react";
 import { useState } from "react";
 
 interface PlanCardProps {
@@ -13,10 +12,10 @@ interface PlanCardProps {
     phases: Array<{ id: string; tasks: Array<{ id: string }> }>;
     assignments: Array<{ id: string }>;
   };
+  onDelete: (id: string) => Promise<void>;
 }
 
-export function PlanCard({ plan }: PlanCardProps) {
-  const { deletePlan } = usePlans();
+export function PlanCard({ plan, onDelete }: PlanCardProps) {
   const [deleting, setDeleting] = useState(false);
   const taskCount = plan.phases.reduce((acc, p) => acc + (p.tasks?.length ?? 0), 0);
   const date = new Date(plan.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
@@ -25,7 +24,7 @@ export function PlanCard({ plan }: PlanCardProps) {
     e.preventDefault();
     if (!confirm("Delete this plan? This cannot be undone.")) return;
     setDeleting(true);
-    try { await deletePlan(plan.id); } catch { setDeleting(false); }
+    try { await onDelete(plan.id); } catch { setDeleting(false); }
   }
 
   return (
@@ -39,9 +38,9 @@ export function PlanCard({ plan }: PlanCardProps) {
           <button
             onClick={handleDelete}
             disabled={deleting}
-            className="shrink-0 opacity-0 group-hover:opacity-100 w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-all"
+            className="shrink-0 opacity-0 group-hover:opacity-100 w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-all disabled:opacity-60"
           >
-            <Trash2 className="w-3.5 h-3.5" />
+            {deleting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
           </button>
         </div>
 

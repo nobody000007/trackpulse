@@ -10,6 +10,7 @@ import {
 import { EmployeeActions } from "@/frontend/components/employees/employee-actions";
 import { VelocityChart } from "@/frontend/components/employees/velocity-chart";
 import { ManagerReplyPanel } from "@/frontend/components/employees/manager-reply-panel";
+import { SubmissionExpander } from "@/frontend/components/employees/submission-expander";
 
 export default async function EmployeeDetailPage({ params }: { params: { id: string } }) {
   const session = await auth();
@@ -41,7 +42,7 @@ export default async function EmployeeDetailPage({ params }: { params: { id: str
   // Fetch statusNote and LINK_RETURN events via raw SQL (Prisma client may lag behind schema).
   const assignmentIds = emp.assignments.map((a) => a.id);
   const idList = assignmentIds.length > 0 ? Prisma.join(assignmentIds) : null;
-  const [rawNotes, rawLinkEvents, rawAllEvents, rawSubmissions] = idList
+  const [rawNotes, rawLinkEvents, rawAllEvents, rawSubmissions, rawSubFiles, rawCompletions] = idList
     ? await Promise.all([
         prisma.$queryRaw<{ id: string; status_note: string | null; status_note_at: Date | null }[]>`
           SELECT id, status_note, status_note_at FROM assignments WHERE id IN (${idList})
@@ -62,8 +63,21 @@ export default async function EmployeeDetailPage({ params }: { params: { id: str
           WHERE assignment_id IN (${idList})
             AND (submission_url IS NOT NULL OR submission_name IS NOT NULL)
         `,
+        prisma.$queryRaw<{ id: string; assignment_id: string; task_id: string; filename: string; blob_url: string; file_type: string; file_size: number }[]>`
+          SELECT id, assignment_id, task_id, filename, blob_url, file_type, file_size
+          FROM submission_files
+          WHERE assignment_id IN (${idList})
+          ORDER BY created_at ASC
+        `,
+        prisma.$queryRaw<{ assignment_id: string; task_id: string; task_title: string; updated_at: Date }[]>`
+          SELECT tp.assignment_id, tp.task_id, t.title AS task_title, tp.updated_at
+          FROM task_progress tp
+          JOIN tasks t ON t.id = tp.task_id
+          WHERE tp.assignment_id IN (${idList}) AND tp.status = 'COMPLETED'
+          ORDER BY tp.updated_at DESC
+        `,
       ])
-    : [[], [], [], []];
+    : [[], [], [], [], [], []];
 
   const notesByAssignmentId = new Map(rawNotes.map((r) => [r.id, r]));
 
@@ -92,6 +106,22 @@ export default async function EmployeeDetailPage({ params }: { params: { id: str
       submissionName: s.submission_name,
       submittedAt: s.submitted_at,
     });
+  }
+
+  // Build completions map: assignmentId -> completion events[]
+  const completionsByAssignment = new Map<string, { taskId: string; taskTitle: string; updatedAt: Date }[]>();
+  for (const c of rawCompletions) {
+    if (!completionsByAssignment.has(c.assignment_id)) completionsByAssignment.set(c.assignment_id, []);
+    completionsByAssignment.get(c.assignment_id)!.push({ taskId: c.task_id, taskTitle: c.task_title, updatedAt: c.updated_at });
+  }
+
+  // Build submission files map: assignmentId -> taskId -> files[]
+  const subFilesByAssignment = new Map<string, Map<string, typeof rawSubFiles>>();
+  for (const f of rawSubFiles) {
+    if (!subFilesByAssignment.has(f.assignment_id)) subFilesByAssignment.set(f.assignment_id, new Map());
+    const taskMap = subFilesByAssignment.get(f.assignment_id)!;
+    if (!taskMap.has(f.task_id)) taskMap.set(f.task_id, []);
+    taskMap.get(f.task_id)!.push(f);
   }
 
   const initials = emp.name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
@@ -224,6 +254,7 @@ export default async function EmployeeDetailPage({ params }: { params: { id: str
               const linkReadSec = Array.from(linkReadByTask.values()).reduce((a, b) => a + b, 0);
               const noteData = notesByAssignmentId.get(assignment.id);
               const submissionsByTask = submissionsByAssignment.get(assignment.id) ?? new Map();
+              const subFilesByTask = subFilesByAssignment.get(assignment.id) ?? new Map();
               const helpTasks = assignment.progress
                 .filter((p) => p.notes?.startsWith("🚩 Help requested:"))
                 .map((p) => ({
@@ -238,6 +269,33 @@ export default async function EmployeeDetailPage({ params }: { params: { id: str
                 RED: "bg-red-50 text-red-700 border-red-200",
               };
               const riskLabels = { GREEN: "On Track", YELLOW: "Needs Attention", RED: "At Risk" };
+
+              // Merge tracking events + completions into unified activity feed
+              const completions = completionsByAssignment.get(assignment.id) ?? [];
+              interface ActivityItem {
+                kind: "event" | "completion";
+                id?: string;
+                event_type?: string;
+                read_time_sec?: number | null;
+                taskTitle?: string;
+                taskId?: string;
+                timestamp: Date;
+              }
+              const mergedActivity: ActivityItem[] = [
+                ...assignmentEvents.map((e) => ({
+                  kind: "event" as const,
+                  id: e.id,
+                  event_type: e.event_type,
+                  read_time_sec: e.read_time_sec,
+                  timestamp: new Date(e.timestamp),
+                })),
+                ...completions.map((c) => ({
+                  kind: "completion" as const,
+                  taskId: c.taskId,
+                  taskTitle: c.taskTitle,
+                  timestamp: new Date(c.updatedAt),
+                })),
+              ].sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime()).slice(0, 8);
 
               return (
                 <div key={assignment.id} className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
@@ -373,53 +431,60 @@ export default async function EmployeeDetailPage({ params }: { params: { id: str
                             {phase.tasks.map((task) => {
                               const prog = assignment.progress.find((p) => p.task.id === task.id);
                               const status = prog?.status ?? "NOT_STARTED";
+                              const sub = submissionsByTask.get(task.id);
+                              const subFiles = (subFilesByTask.get(task.id) ?? []).map((f) => ({
+                                id: f.id, filename: f.filename, blobUrl: f.blob_url,
+                                fileType: f.file_type, fileSize: f.file_size,
+                              }));
                               return (
-                                <div key={task.id} className="flex items-center gap-2.5 text-xs group">
-                                  <span className={
-                                    status === "COMPLETED" ? "text-emerald-500" :
-                                    status === "IN_PROGRESS" ? "text-blue-500" : "text-gray-300"
-                                  }>
-                                    {status === "COMPLETED" ? "✓" : status === "IN_PROGRESS" ? "●" : "○"}
-                                  </span>
-                                  <span className={`flex-1 ${
-                                    status === "COMPLETED" ? "line-through text-gray-400" :
-                                    status === "IN_PROGRESS" ? "text-blue-700 font-medium" : "text-gray-700"
-                                  }`}>
-                                    {task.title}
-                                  </span>
-                                  <span className={`px-1.5 py-0.5 rounded text-xs border ${
-                                    task.type === "ACTION" ? "bg-blue-50 text-blue-600 border-blue-100" :
-                                    task.type === "DOCUMENT" ? "bg-purple-50 text-purple-600 border-purple-100" :
-                                    "bg-cyan-50 text-cyan-600 border-cyan-100"
-                                  }`}>
-                                    {task.type}
-                                  </span>
-                                  {(() => {
-                                    const secs = linkReadByTask.get(task.id) ?? 0;
-                                    if (!secs) return null;
-                                    return (
-                                      <span className="flex items-center gap-0.5 text-amber-600 font-medium" title="Time spent reading the linked resource">
-                                        <Clock className="w-3 h-3" />
-                                        {secs >= 60 ? `${Math.round(secs / 60)}m` : `${secs}s`}
-                                      </span>
-                                    );
-                                  })()}
-                                  {prog?.notes?.startsWith("🚩 Help requested:") && (
-                                    <span title={prog.notes} className="flex items-center gap-0.5 text-red-500 font-semibold text-xs">
-                                      🚩 Help needed
+                                <div key={task.id} className="text-xs">
+                                  <div className="flex items-center gap-2.5 group">
+                                    <span className={
+                                      status === "COMPLETED" ? "text-emerald-500" :
+                                      status === "IN_PROGRESS" ? "text-blue-500" : "text-gray-300"
+                                    }>
+                                      {status === "COMPLETED" ? "✓" : status === "IN_PROGRESS" ? "●" : "○"}
                                     </span>
-                                  )}
-                                  {(() => {
-                                    const sub = submissionsByTask.get(task.id);
-                                    if (!sub) return null;
-                                    return (
-                                      <span className="flex items-center gap-0.5 text-emerald-600 font-medium text-xs" title={sub.submissionUrl ?? sub.submissionName ?? ""}>
-                                        📎 Submitted
-                                      </span>
-                                    );
-                                  })()}
-                                  {status === "IN_PROGRESS" && (
-                                    <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
+                                    <span className={`flex-1 ${
+                                      status === "COMPLETED" ? "line-through text-gray-400" :
+                                      status === "IN_PROGRESS" ? "text-blue-700 font-medium" : "text-gray-700"
+                                    }`}>
+                                      {task.title}
+                                    </span>
+                                    <span className={`px-1.5 py-0.5 rounded text-xs border ${
+                                      task.type === "ACTION" ? "bg-blue-50 text-blue-600 border-blue-100" :
+                                      task.type === "DOCUMENT" ? "bg-purple-50 text-purple-600 border-purple-100" :
+                                      "bg-cyan-50 text-cyan-600 border-cyan-100"
+                                    }`}>
+                                      {task.type}
+                                    </span>
+                                    {(() => {
+                                      const secs = linkReadByTask.get(task.id) ?? 0;
+                                      if (!secs) return null;
+                                      return (
+                                        <span className="flex items-center gap-0.5 text-amber-600 font-medium">
+                                          <Clock className="w-3 h-3" />
+                                          {secs >= 60 ? `${Math.round(secs / 60)}m` : `${secs}s`}
+                                        </span>
+                                      );
+                                    })()}
+                                    {prog?.notes?.startsWith("🚩 Help requested:") && (
+                                      <span className="text-red-500 font-semibold">🚩 Help needed</span>
+                                    )}
+                                    {status === "IN_PROGRESS" && (
+                                      <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
+                                    )}
+                                  </div>
+                                  {(sub || subFiles.length > 0) && (
+                                    <div className="ml-5">
+                                      <SubmissionExpander
+                                        taskTitle={task.title}
+                                        submissionUrl={sub?.submissionUrl}
+                                        submissionName={sub?.submissionName}
+                                        submittedAt={sub?.submittedAt}
+                                        files={subFiles}
+                                      />
+                                    </div>
                                   )}
                                 </div>
                               );
@@ -431,31 +496,41 @@ export default async function EmployeeDetailPage({ params }: { params: { id: str
                   </div>
 
                   {/* Recent events */}
-                  {assignmentEvents.length > 0 && (
+                  {mergedActivity.length > 0 && (
                     <div className="border-t border-gray-100 px-5 py-4">
                       <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Recent Activity</p>
                       <div className="space-y-2">
-                        {assignmentEvents.slice(0, 8).map((event) => (
-                          <div key={event.id} className="flex items-center gap-2.5 text-xs">
-                            <span className="w-1.5 h-1.5 rounded-full bg-indigo-300 shrink-0" />
-                            <span className={`font-medium ${
-                              event.event_type === "OPEN" ? "text-blue-600" :
-                              event.event_type === "LINK_CLICK" ? "text-indigo-600" :
-                              event.event_type === "LINK_RETURN" ? "text-amber-600" :
-                              "text-gray-600"
-                            }`}>
-                              {event.event_type === "LINK_RETURN" ? "Doc read" : event.event_type.replace(/_/g, " ")}
-                            </span>
-                            {(event.read_time_sec ?? 0) > 0 && (
-                              <span className="text-gray-400">
-                                {(event.read_time_sec ?? 0) >= 60
-                                  ? `${Math.round((event.read_time_sec ?? 0) / 60)}m`
-                                  : `${event.read_time_sec}s`}
-                                {event.event_type === "LINK_RETURN" ? " on link" : " read"}
-                              </span>
+                        {mergedActivity.map((item, i) => (
+                          <div key={item.kind === "event" ? item.id : `c-${item.taskId}-${i}`} className="flex items-center gap-2.5 text-xs">
+                            <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${item.kind === "completion" ? "bg-emerald-400" : "bg-indigo-300"}`} />
+                            {item.kind === "completion" ? (
+                              <>
+                                <CheckCircle2 className="w-3 h-3 text-emerald-500 shrink-0" />
+                                <span className="font-medium text-emerald-700">Task completed</span>
+                                <span className="text-gray-500 truncate max-w-[160px]">{item.taskTitle}</span>
+                              </>
+                            ) : (
+                              <>
+                                <span className={`font-medium ${
+                                  item.event_type === "OPEN" ? "text-blue-600" :
+                                  item.event_type === "LINK_CLICK" ? "text-indigo-600" :
+                                  item.event_type === "LINK_RETURN" ? "text-amber-600" :
+                                  "text-gray-600"
+                                }`}>
+                                  {item.event_type === "LINK_RETURN" ? "Doc read" : item.event_type!.replace(/_/g, " ")}
+                                </span>
+                                {(item.read_time_sec ?? 0) > 0 && (
+                                  <span className="text-gray-400">
+                                    {(item.read_time_sec ?? 0) >= 60
+                                      ? `${Math.round((item.read_time_sec ?? 0) / 60)}m`
+                                      : `${item.read_time_sec}s`}
+                                    {item.event_type === "LINK_RETURN" ? " on link" : " read"}
+                                  </span>
+                                )}
+                              </>
                             )}
-                            <span className="ml-auto text-gray-400">
-                              {new Date(event.timestamp).toLocaleString("en-US", {
+                            <span className="ml-auto text-gray-400 shrink-0">
+                              {item.timestamp.toLocaleString("en-US", {
                                 month: "short", day: "numeric",
                                 hour: "numeric", minute: "2-digit"
                               })}
