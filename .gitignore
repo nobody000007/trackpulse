@@ -48,6 +48,9 @@ desktop.ini
 .vercel
 web.config
 
+# Claude Code local config
+.claude/
+
 # Certificates & keys
 *.pem
 *.key
