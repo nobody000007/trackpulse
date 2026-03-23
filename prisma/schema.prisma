@@ -1,0 +1,209 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Manager {
+  id            String         @id @default(cuid())
+  email         String         @unique
+  name          String
+  passwordHash  String         @map("password_hash")
+  createdAt     DateTime       @default(now()) @map("created_at")
+  updatedAt     DateTime       @updatedAt @map("updated_at")
+  plans         Plan[]
+  employees     Employee[]
+  notifications Notification[]
+
+  @@map("managers")
+}
+
+model Plan {
+  id          String       @id @default(cuid())
+  managerId   String       @map("manager_id")
+  title       String
+  description String?
+  createdAt   DateTime     @default(now()) @map("created_at")
+  updatedAt   DateTime     @updatedAt @map("updated_at")
+  manager     Manager      @relation(fields: [managerId], references: [id], onDelete: Cascade)
+  phases      Phase[]
+  assignments Assignment[]
+
+  @@map("plans")
+}
+
+model Phase {
+  id         String  @id @default(cuid())
+  planId     String  @map("plan_id")
+  title      String
+  orderIndex Int     @map("order_index")
+  plan       Plan    @relation(fields: [planId], references: [id], onDelete: Cascade)
+  tasks      Task[]
+
+  @@map("phases")
+}
+
+model Task {
+  id            String          @id @default(cuid())
+  phaseId       String          @map("phase_id")
+  title         String
+  description   String?
+  type          TaskType        @default(ACTION)
+  priority      Priority        @default(MEDIUM)
+  dueDate       DateTime?       @map("due_date")
+  url           String?
+  content       String?
+  orderIndex    Int             @map("order_index")
+  phase         Phase           @relation(fields: [phaseId], references: [id], onDelete: Cascade)
+  progress      TaskProgress[]
+  events        TrackingEvent[]
+  attachments   Attachment[]
+  managerReplies ManagerReply[]
+
+  @@map("tasks")
+}
+
+enum TaskType {
+  ACTION
+  DOCUMENT
+  LINK
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+model Employee {
+  id          String       @id @default(cuid())
+  managerId   String       @map("manager_id")
+  name        String
+  email       String
+  role        String?
+  strengths   String?
+  weaknesses  String?
+  createdAt   DateTime     @default(now()) @map("created_at")
+  manager     Manager      @relation(fields: [managerId], references: [id], onDelete: Cascade)
+  assignments Assignment[]
+
+  @@map("employees")
+}
+
+model Assignment {
+  id             String           @id @default(cuid())
+  planId         String           @map("plan_id")
+  employeeId     String           @map("employee_id")
+  token          String           @unique @default(cuid())
+  status         AssignmentStatus @default(ACTIVE)
+  assignedAt     DateTime         @default(now()) @map("assigned_at")
+  statusNote     String?          @map("status_note")
+  statusNoteAt   DateTime?        @map("status_note_at")
+  plan           Plan             @relation(fields: [planId], references: [id], onDelete: Cascade)
+  employee       Employee         @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  progress       TaskProgress[]
+  events         TrackingEvent[]
+  managerReplies ManagerReply[]
+
+  @@unique([planId, employeeId])
+  @@map("assignments")
+}
+
+enum AssignmentStatus {
+  ACTIVE
+  REVOKED
+  COMPLETED
+}
+
+model TaskProgress {
+  id             String         @id @default(cuid())
+  assignmentId   String         @map("assignment_id")
+  taskId         String         @map("task_id")
+  status         ProgressStatus @default(NOT_STARTED)
+  notes          String?
+  submissionUrl  String?        @map("submission_url")
+  submissionName String?        @map("submission_name")
+  submittedAt    DateTime?      @map("submitted_at")
+  updatedAt      DateTime       @updatedAt @map("updated_at")
+  assignment     Assignment     @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  task           Task           @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@unique([assignmentId, taskId])
+  @@map("task_progress")
+}
+
+enum ProgressStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  COMPLETED
+}
+
+model TrackingEvent {
+  id             String    @id @default(cuid())
+  assignmentId   String    @map("assignment_id")
+  taskId         String    @map("task_id")
+  eventType      EventType @map("event_type")
+  sessionId      String?   @map("session_id")
+  readTimeSec    Int?      @map("read_time_sec")
+  scrollDepthPct Float?    @map("scroll_depth_pct")
+  userAgent      String?   @map("user_agent")
+  timestamp      DateTime  @default(now())
+  assignment     Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  task           Task       @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@index([assignmentId, taskId])
+  @@index([timestamp])
+  @@map("tracking_events")
+}
+
+enum EventType {
+  OPEN
+  HEARTBEAT
+  SCROLL
+  CLOSE
+  LINK_CLICK
+  LINK_RETURN
+}
+
+model Attachment {
+  id       String @id @default(cuid())
+  taskId   String @map("task_id")
+  filename String
+  blobUrl  String @map("blob_url")
+  fileType String @map("file_type")
+  fileSize Int    @map("file_size")
+  task     Task   @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@map("attachments")
+}
+
+model Notification {
+  id        String    @id @default(cuid())
+  managerId String    @map("manager_id")
+  type      String    // HELP_REQUEST | SUBMISSION
+  title     String
+  body      String
+  link      String?
+  readAt    DateTime? @map("read_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+  manager   Manager   @relation(fields: [managerId], references: [id], onDelete: Cascade)
+
+  @@index([managerId, readAt])
+  @@map("notifications")
+}
+
+model ManagerReply {
+  id           String    @id @default(cuid())
+  assignmentId String    @map("assignment_id")
+  taskId       String    @map("task_id")
+  message      String
+  readAt       DateTime? @map("read_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  assignment   Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  task         Task       @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@map("manager_replies")
+}
