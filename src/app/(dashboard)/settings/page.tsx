@@ -1,7 +1,7 @@
 import { auth } from "@/backend/lib/auth";
 import { SettingsForm } from "@/frontend/components/settings/settings-form";
 import Link from "next/link";
-import { User, Bell, Shield } from "lucide-react";
+import { User } from "lucide-react";
 
 export default async function SettingsPage() {
   const session = await auth();
@@ -20,9 +20,6 @@ export default async function SettingsPage() {
             <ul className="divide-y divide-gray-100">
               {[
                 { href: "/settings", label: "Account", icon: User, active: true },
-                { href: "/settings/profile", label: "Profile", icon: User, active: false },
-                { href: "/settings/notifications", label: "Notifications", icon: Bell, active: false },
-                { href: "/settings/security", label: "Security", icon: Shield, active: false },
               ].map((item) => (
                 <li key={item.href}>
                   <Link
