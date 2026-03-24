@@ -22,6 +22,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Generate Prisma client (Linux binary for Azure)
+        run: npx prisma generate
+
       - name: Build Next.js app
         run: npm run build
         env:
@@ -29,9 +32,6 @@ jobs:
           NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET }}
           NEXTAUTH_URL: ${{ secrets.NEXTAUTH_URL }}
           NEXT_PUBLIC_APP_URL: ${{ secrets.NEXT_PUBLIC_APP_URL }}
-
-      - name: Copy server.js into standalone output
-        run: cp server.js .next/standalone/server.js
 
       - name: Copy static assets into standalone output
         run: |
