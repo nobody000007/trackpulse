@@ -74,7 +74,7 @@ export function PlanBuilder() {
         tasks: p.tasks.map((t, j) => ({
           title: t.title, description: t.description ?? "",
           type: t.type ?? "ACTION", priority: t.priority ?? "MEDIUM",
-          url: "", content: "", dueDate: "", orderIndex: j,
+          url: t.url ?? "", content: "", dueDate: "", orderIndex: j,
         })),
       }));
       setPhases(newPhases);
@@ -117,6 +117,8 @@ export function PlanBuilder() {
   async function handleSave() {
     if (!title.trim()) { setSaveError("Plan title is required."); return; }
     if (phases.length === 0) { setSaveError("Add at least one phase before saving."); return; }
+    const missingUrl = phases.flatMap((p) => p.tasks).find((t) => t.type === "LINK" && !t.url.trim());
+    if (missingUrl) { setSaveError(`Task "${missingUrl.title}" is type Link — a URL is required.`); return; }
     setSaving(true); setSaveError("");
     try {
       const input: CreatePlanInput = {
@@ -310,15 +312,24 @@ export function PlanBuilder() {
                                 className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
                               />
 
-                              {/* LINK: URL field */}
+                              {/* LINK: URL field (required) */}
                               {task.type === "LINK" && (
-                                <div className="relative">
-                                  <Link2 className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
-                                  <input type="url" value={task.url}
-                                    onChange={(e) => updateTask(phaseIdx, taskIdx, "url", e.target.value)}
-                                    placeholder="https://docs.company.com/guide"
-                                    className="w-full pl-9 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                                  />
+                                <div className="space-y-1">
+                                  <div className="relative">
+                                    <Link2 className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
+                                    <input type="url" value={task.url}
+                                      onChange={(e) => updateTask(phaseIdx, taskIdx, "url", e.target.value)}
+                                      placeholder="https://docs.company.com/guide"
+                                      className={`w-full pl-9 pr-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+                                        !task.url.trim() ? "border-rose-300 bg-rose-50/40" : "border-gray-200"
+                                      }`}
+                                    />
+                                  </div>
+                                  {!task.url.trim() && (
+                                    <p className="text-xs text-rose-600 flex items-center gap-1">
+                                      <AlertCircle className="w-3 h-3" /> URL is required for Link tasks
+                                    </p>
+                                  )}
                                 </div>
                               )}
 
@@ -373,10 +384,14 @@ export function PlanBuilder() {
                               </span>
                               <div className="flex-1 min-w-0">
                                 <span className="text-sm text-gray-800">{task.title}</span>
-                                {task.url && (
+                                {task.url ? (
                                   <span className="flex items-center gap-1 text-xs text-indigo-500 mt-0.5">
                                     <ExternalLink className="w-3 h-3" />
                                     <span className="truncate max-w-[200px]">{task.url}</span>
+                                  </span>
+                                ) : task.type === "LINK" && (
+                                  <span className="flex items-center gap-1 text-xs text-rose-500 mt-0.5">
+                                    <AlertCircle className="w-3 h-3" /> URL missing — click Edit
                                   </span>
                                 )}
                               </div>

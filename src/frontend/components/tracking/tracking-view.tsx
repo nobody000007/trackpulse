@@ -59,7 +59,7 @@ interface TrackingViewProps {
   progress: Progress[];
   linkReadSeconds?: Record<string, number>;
   onProgressChange?: (completedCount: number) => void;
-  onReadTimeChange?: (addedSecs: number) => void;
+  onReadTimeChange?: (taskId: string, addedSecs: number) => void;
 }
 
 function AttachmentIcon({ type }: { type: string }) {
@@ -98,7 +98,7 @@ function TaskRow({
   replies: Reply[];
   onStatusChange: (taskId: string, status: ProgressStatus) => void;
   onMarkReplyRead: (replyId: string) => void;
-  onReadTimeChange?: (addedSecs: number) => void;
+  onReadTimeChange?: (taskId: string, addedSecs: number) => void;
 }) {
   const { updateProgress, sendEvent } = useTracking(token);
   const [status, setStatus] = useState<ProgressStatus>(initialStatus);
@@ -141,7 +141,7 @@ function TaskRow({
     setTimerOpen(false);
     if (secs > 0) {
       setTotalReadSec((prev) => prev + secs);
-      onReadTimeChange?.(secs);
+      onReadTimeChange?.(task.id, secs);
       setReadJustUpdated(true);
       setTimeout(() => setReadJustUpdated(false), 2000);
     }
@@ -519,7 +519,7 @@ function PhaseSection({
   defaultOpen: boolean;
   onStatusChange: (taskId: string, status: ProgressStatus) => void;
   onMarkReplyRead: (replyId: string) => void;
-  onReadTimeChange?: (addedSecs: number) => void;
+  onReadTimeChange?: (taskId: string, addedSecs: number) => void;
 }) {
   const [open, setOpen] = useState(defaultOpen);
   const total = phase.tasks.length;
@@ -528,43 +528,59 @@ function PhaseSection({
   const allDone = done === total && total > 0;
 
   return (
-    <div className="rounded-2xl border border-gray-200 bg-white overflow-hidden shadow-sm">
+    <div className={`rounded-2xl border overflow-hidden shadow-sm transition-colors ${
+      allDone ? "border-emerald-200 bg-emerald-50/20" : "border-gray-200 bg-white"
+    }`}>
+      {/* Phase header */}
       <button
         onClick={() => setOpen((v) => !v)}
-        className="w-full flex items-center gap-3 px-5 py-4 hover:bg-gray-50/80 transition-colors text-left"
+        className={`w-full flex items-center gap-4 px-6 py-5 transition-colors text-left ${
+          allDone ? "hover:bg-emerald-50/40" : "hover:bg-gray-50/80"
+        }`}
       >
-        <span className={`shrink-0 ${allDone ? "text-emerald-500" : "text-gray-400"}`}>
-          {open ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-        </span>
+        {/* Phase number / check */}
+        <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 font-bold text-sm ${
+          allDone
+            ? "bg-emerald-100 text-emerald-600"
+            : "bg-indigo-50 text-indigo-600"
+        }`}>
+          {allDone ? <CheckCircle2 className="w-4 h-4" /> : <span>{phase.title.match(/\d+/)?.[0] ?? "·"}</span>}
+        </div>
+
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className={`font-semibold text-sm ${allDone ? "text-emerald-700" : "text-gray-900"}`}>
+          <div className="flex items-center gap-2.5 flex-wrap">
+            <span className={`font-bold text-base ${allDone ? "text-emerald-700" : "text-gray-900"}`}>
               {phase.title}
             </span>
             {allDone && (
-              <span className="flex items-center gap-1 text-xs text-emerald-600 font-medium">
-                <CheckCircle2 className="w-3.5 h-3.5" /> Complete
+              <span className="flex items-center gap-1 text-xs text-emerald-600 bg-emerald-100 px-2 py-0.5 rounded-full font-medium">
+                <CheckCircle2 className="w-3 h-3" /> Complete
               </span>
             )}
           </div>
           {phase.description && (
-            <p className="text-xs text-gray-400 mt-0.5 truncate">{phase.description}</p>
+            <p className="text-sm text-gray-400 mt-0.5 truncate">{phase.description}</p>
           )}
         </div>
-        <div className="flex items-center gap-3 shrink-0">
-          <span className="text-xs text-gray-400">{done}/{total}</span>
-          <div className="w-20 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-            <div
-              className={`h-full rounded-full transition-all duration-500 ${allDone ? "bg-emerald-400" : "bg-indigo-400"}`}
-              style={{ width: `${pct}%` }}
-            />
+
+        <div className="flex items-center gap-4 shrink-0">
+          <div className="hidden sm:flex items-center gap-2">
+            <div className="w-28 h-2 bg-gray-100 rounded-full overflow-hidden">
+              <div
+                className={`h-full rounded-full transition-all duration-500 ${allDone ? "bg-emerald-400" : "bg-indigo-400"}`}
+                style={{ width: `${pct}%` }}
+              />
+            </div>
+            <span className="text-xs font-semibold text-gray-500 w-12 text-right">{done}/{total} done</span>
           </div>
-          <span className="text-xs font-semibold text-gray-500 w-8 text-right">{pct}%</span>
+          <span className={`shrink-0 ${allDone ? "text-emerald-400" : "text-gray-300"}`}>
+            {open ? <ChevronDown className="w-5 h-5" /> : <ChevronRight className="w-5 h-5" />}
+          </span>
         </div>
       </button>
 
       {open && (
-        <div className="px-5 pb-5 space-y-3 border-t border-gray-100 pt-4">
+        <div className="px-6 pb-6 space-y-3 border-t border-gray-100 pt-5">
           {phase.tasks.map((task) => (
             <TaskRow
               key={task.id}
@@ -649,7 +665,7 @@ export function TrackingView({ token, phases, progress, linkReadSeconds = {}, on
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       {phases.map((phase, idx) => (
         <PhaseSection
           key={phase.id}

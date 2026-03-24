@@ -36,7 +36,8 @@ Return ONLY valid JSON in this exact format — no extra text:
           "description": "Clear description of what needs to be done",
           "type": "ACTION|DOCUMENT|LINK",
           "priority": "LOW|MEDIUM|HIGH",
-          "suggestedDays": 1
+          "suggestedDays": 1,
+          "url": null
         }
       ]
     }
@@ -46,7 +47,9 @@ Rules:
 - Create 3-5 logical phases (e.g. Onboarding, Core Training, Advanced Skills, Evaluation)
 - Each phase should have 3-6 tasks
 - Use ACTION for tasks requiring active work, DOCUMENT for reading/reviewing, LINK for online resources
-- Set priority based on importance and sequence${contextNote}`,
+- Set priority based on importance and sequence
+- CRITICAL: For every LINK type task, the "url" field MUST be a real, publicly accessible URL (e.g. https://docs.python.org/3/, https://www.youtube.com/watch?v=..., https://developer.mozilla.org/en-US/docs/...). NEVER leave "url" as null for a LINK task. Choose the most relevant real URL for the topic.
+- For ACTION and DOCUMENT tasks, "url" should be null${contextNote}`,
         },
         { role: "user", content: rawText },
       ],
