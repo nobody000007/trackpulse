@@ -18,7 +18,7 @@ export function TrackingScript({ token, taskId }: TrackingScriptProps) {
     if (!taskId) return;
 
     // Fire OPEN event
-    sendEvent({ taskId, eventType: "OPEN", sessionId: sessionId.current });
+    sendEvent({ taskId: taskId!, eventType: "OPEN", sessionId: sessionId.current });
 
     // Track visibility
     function handleVisibilityChange() {
@@ -36,7 +36,7 @@ export function TrackingScript({ token, taskId }: TrackingScriptProps) {
       if (!isVisible.current) return;
       const elapsed = Math.round((Date.now() - readStartTime.current) / 1000);
       const totalTime = cumulativeReadTime.current + elapsed;
-      sendEvent({ taskId, eventType: "HEARTBEAT", sessionId: sessionId.current, readTimeSec: totalTime });
+      sendEvent({ taskId: taskId!, eventType: "HEARTBEAT", sessionId: sessionId.current, readTimeSec: totalTime });
     }, 30000);
 
     // Scroll tracking
@@ -47,7 +47,7 @@ export function TrackingScript({ token, taskId }: TrackingScriptProps) {
       const depth = Math.round((scrolled / total) * 100);
       if (depth > maxScroll) {
         maxScroll = depth;
-        sendEvent({ taskId, eventType: "SCROLL", sessionId: sessionId.current, scrollDepthPct: depth });
+        sendEvent({ taskId: taskId!, eventType: "SCROLL", sessionId: sessionId.current, scrollDepthPct: depth });
       }
     }
 
@@ -55,7 +55,7 @@ export function TrackingScript({ token, taskId }: TrackingScriptProps) {
     function handleBeforeUnload() {
       const elapsed = Math.round((Date.now() - readStartTime.current) / 1000);
       const totalTime = cumulativeReadTime.current + elapsed;
-      sendEvent({ taskId, eventType: "CLOSE", sessionId: sessionId.current, readTimeSec: totalTime });
+      sendEvent({ taskId: taskId!, eventType: "CLOSE", sessionId: sessionId.current, readTimeSec: totalTime });
     }
 
     document.addEventListener("visibilitychange", handleVisibilityChange);
