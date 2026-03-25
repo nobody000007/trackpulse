@@ -117,6 +117,8 @@ export function PlanBuilder() {
   async function handleSave() {
     if (!title.trim()) { setSaveError("Plan title is required."); return; }
     if (phases.length === 0) { setSaveError("Add at least one phase before saving."); return; }
+    const emptyPhase = phases.find((p) => p.tasks.length === 0);
+    if (emptyPhase) { setSaveError(`Phase "${emptyPhase.title}" has no tasks — add at least one task.`); return; }
     const missingUrl = phases.flatMap((p) => p.tasks).find((t) => t.type === "LINK" && !t.url.trim());
     if (missingUrl) { setSaveError(`Task "${missingUrl.title}" is type Link — a URL is required.`); return; }
     setSaving(true); setSaveError("");
