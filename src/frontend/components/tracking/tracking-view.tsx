@@ -128,7 +128,7 @@ function TaskRow({
     }
   }
 
-  async function handleStatus(next: ProgressStatus) {
+  async function handleStatus(next: ProgressStatus | string) {
     fireOpen();
     setUpdatingStatus(true);
     setStatus(next);
