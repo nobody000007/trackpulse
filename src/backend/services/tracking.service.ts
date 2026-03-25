@@ -26,7 +26,7 @@ export class TrackingService {
     return ProgressRepository.upsert({
       assignmentId: assignment.id,
       taskId,
-      status: input.status,
+      status: input.status as any,
       notes: input.notes,
     });
   }
