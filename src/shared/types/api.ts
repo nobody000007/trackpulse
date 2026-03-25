@@ -38,7 +38,7 @@ export interface CreateAssignmentInput {
 
 export interface TrackingEventInput {
   taskId: string;
-  eventType: EventType;
+  eventType: EventType | string;
   sessionId?: string;
   readTimeSec?: number;
   scrollDepthPct?: number;
@@ -46,7 +46,7 @@ export interface TrackingEventInput {
 }
 
 export interface UpdateTaskProgressInput {
-  status?: ProgressStatus;
+  status?: ProgressStatus | string;
   notes?: string;
 }
 
