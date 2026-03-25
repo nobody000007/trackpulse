@@ -23,7 +23,7 @@ export class AssignmentService {
     employee: { name: string; email: string };
     plan: { title: string };
   }) {
-    const trackUrl = `${process.env.NEXT_PUBLIC_APP_URL}/track/${assignment.token}`;
+    const trackUrl = `${(process.env.NEXT_PUBLIC_APP_URL ?? "").replace(/\/$/, "")}/track/${assignment.token}`;
 
     await sendMail({
       to: assignment.employee.email,

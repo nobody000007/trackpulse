@@ -34,7 +34,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   `;
 
   // Send email to employee
-  const trackUrl = `${process.env.NEXT_PUBLIC_APP_URL}/track/${assignment.token}`;
+  const trackUrl = `${(process.env.NEXT_PUBLIC_APP_URL ?? "").replace(/\/$/, "")}/track/${assignment.token}`;
   try {
     await sendMail({
       to: assignment.employee.email,
