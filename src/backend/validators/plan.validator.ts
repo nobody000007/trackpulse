@@ -5,8 +5,8 @@ export const createTaskSchema = z.object({
   description: z.string().optional(),
   type: z.enum(["ACTION", "DOCUMENT", "LINK"]).default("ACTION"),
   priority: z.enum(["LOW", "MEDIUM", "HIGH"]).default("MEDIUM"),
-  dueDate: z.string().datetime().optional(),
-  url: z.string().url().optional(),
+  dueDate: z.string().optional(),
+  url: z.string().url().optional().or(z.literal("")),
   content: z.string().optional(),
   orderIndex: z.number().int().default(0),
 });
