@@ -586,7 +586,7 @@ function PhaseSection({
               key={task.id}
               token={token}
               task={task}
-              initialStatus={progressMap.get(task.id) ?? "NOT_STARTED"}
+              initialStatus={(progressMap.get(task.id) ?? "NOT_STARTED") as ProgressStatus}
               initialLinkReadSec={linkReadSeconds[task.id] ?? 0}
               initialSubmissionUrl={submissionMap.get(task.id)?.submissionUrl}
               initialSubmissionName={submissionMap.get(task.id)?.submissionName}
