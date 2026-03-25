@@ -17,7 +17,7 @@ export function AIGenerateForm({ onGenerated }: AIGenerateFormProps) {
     setLoading(true);
     setError("");
     try {
-      const generated = await api.plans.generate("new", text);
+      const generated = await api.ai.generatePlan(text);
       onGenerated(generated);
     } catch {
       setError("Failed to generate plan. Please try again.");
