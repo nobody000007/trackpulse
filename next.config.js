@@ -1,8 +1,10 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   output: "standalone",
-  outputFileTracingIncludes: {
-    "/**/*": ["./node_modules/.prisma/client/**/*"],
+  experimental: {
+    outputFileTracingIncludes: {
+      "/**/*": ["./node_modules/.prisma/client/**/*"],
+    },
   },
   images: {
     remotePatterns: [

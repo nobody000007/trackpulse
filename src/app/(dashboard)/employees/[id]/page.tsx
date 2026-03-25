@@ -432,7 +432,7 @@ export default async function EmployeeDetailPage({ params }: { params: { id: str
                               const prog = assignment.progress.find((p) => p.task.id === task.id);
                               const status = prog?.status ?? "NOT_STARTED";
                               const sub = submissionsByTask.get(task.id);
-                              const subFiles = (subFilesByTask.get(task.id) ?? []).map((f) => ({
+                              const subFiles = (subFilesByTask.get(task.id) ?? []).map((f: any) => ({
                                 id: f.id, filename: f.filename, blobUrl: f.blob_url,
                                 fileType: f.file_type, fileSize: f.file_size,
                               }));
