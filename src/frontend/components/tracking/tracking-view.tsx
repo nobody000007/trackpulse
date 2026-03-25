@@ -131,8 +131,8 @@ function TaskRow({
   async function handleStatus(next: ProgressStatus | string) {
     fireOpen();
     setUpdatingStatus(true);
-    setStatus(next);
-    onStatusChange(task.id, next);
+    setStatus(next as ProgressStatus);
+    onStatusChange(task.id, next as ProgressStatus);
     await updateProgress(task.id, { status: next });
     setUpdatingStatus(false);
   }
