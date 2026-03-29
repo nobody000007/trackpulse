@@ -17,7 +17,7 @@ export function useDashboard() {
 
   useEffect(() => {
     fetchStats().finally(() => setLoading(false));
-    const id = setInterval(fetchStats, 20000); // poll every 20s
+    const id = setInterval(fetchStats, 10000); // poll every 20s
     return () => clearInterval(id);
   }, []);
 

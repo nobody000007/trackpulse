@@ -1,5 +1,7 @@
 import { auth } from "@/backend/lib/auth";
 import { EmployeeRepository } from "@/backend/repositories/employee.repository";
+
+export const dynamic = "force-dynamic";
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import {

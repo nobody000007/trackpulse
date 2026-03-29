@@ -1,5 +1,7 @@
 import { auth } from "@/backend/lib/auth";
 import { SettingsForm } from "@/frontend/components/settings/settings-form";
+
+export const dynamic = "force-dynamic";
 import Link from "next/link";
 import { User } from "lucide-react";
 

@@ -1,5 +1,7 @@
 import { EmployeesContainer } from "@/frontend/components/employees/employees-container";
 
+export const dynamic = "force-dynamic";
+
 export default function EmployeesPage() {
   return (
     <div className="space-y-6">

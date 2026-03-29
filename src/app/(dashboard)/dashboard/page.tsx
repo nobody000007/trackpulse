@@ -1,4 +1,6 @@
 import { StatsOverview } from "@/frontend/components/dashboard/stats-overview";
+
+export const dynamic = "force-dynamic";
 import { EmployeeList } from "@/frontend/components/dashboard/employee-list";
 import { TeamActivity } from "@/frontend/components/dashboard/team-activity";
 import { auth } from "@/backend/lib/auth";

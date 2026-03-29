@@ -1,4 +1,6 @@
 import { InboxView } from "@/frontend/components/inbox/inbox-view";
+
+export const dynamic = "force-dynamic";
 import { Inbox } from "lucide-react";
 
 export default function InboxPage() {

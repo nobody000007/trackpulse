@@ -1,4 +1,6 @@
 import { AnalyticsView } from "@/frontend/components/analytics/analytics-view";
+
+export const dynamic = "force-dynamic";
 import { BarChart2 } from "lucide-react";
 
 export default function AnalyticsPage() {

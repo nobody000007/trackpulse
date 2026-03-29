@@ -1,5 +1,7 @@
 import { auth } from "@/backend/lib/auth";
 import Link from "next/link";
+
+export const dynamic = "force-dynamic";
 import { User, Bell, Shield, ArrowLeft, Briefcase, Mail, Calendar } from "lucide-react";
 import { ProfileForm } from "@/frontend/components/settings/profile-form";
 

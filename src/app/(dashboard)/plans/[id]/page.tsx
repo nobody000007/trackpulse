@@ -1,4 +1,6 @@
 import { PlanDetail } from "@/frontend/components/plans/plan-detail";
+
+export const dynamic = "force-dynamic";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 
