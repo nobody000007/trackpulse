@@ -13,7 +13,13 @@ export class AssignmentRepository {
   static async findByToken(token: string) {
     return prisma.assignment.findUnique({
       where: { token },
-      include: {
+      select: {
+        id: true,
+        token: true,
+        status: true,
+        assignedAt: true,
+        statusNote: true,
+        linkPassword: true,
         plan: {
           include: {
             phases: {
@@ -34,13 +40,10 @@ export class AssignmentRepository {
 
     const id = (assignment as any).id as string;
 
-    const [rawLinkEvents, metaRows, submissionRows] = await Promise.all([
+    const [rawLinkEvents, submissionRows] = await Promise.all([
       prisma.$queryRaw<{ task_id: string; read_time_sec: number | null }[]>`
         SELECT task_id, read_time_sec FROM tracking_events
         WHERE assignment_id = ${id} AND event_type = 'LINK_RETURN'
-      `,
-      prisma.$queryRaw<{ status_note: string | null }[]>`
-        SELECT status_note FROM assignments WHERE id = ${id}
       `,
       prisma.$queryRaw<{ task_id: string; submission_url: string | null; submission_name: string | null }[]>`
         SELECT task_id, submission_url, submission_name FROM task_progress
@@ -63,7 +66,7 @@ export class AssignmentRepository {
     return {
       assignment,
       linkReadSeconds,
-      statusNote: metaRows[0]?.status_note ?? "",
+      statusNote: (assignment as any).statusNote ?? "",
       submissionByTaskId,
     };
   }

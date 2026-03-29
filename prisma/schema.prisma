@@ -103,6 +103,7 @@ model Assignment {
   assignedAt     DateTime         @default(now()) @map("assigned_at")
   statusNote     String?          @map("status_note")
   statusNoteAt   DateTime?        @map("status_note_at")
+  linkPassword   String?          @map("link_password")
   plan           Plan             @relation(fields: [planId], references: [id], onDelete: Cascade)
   employee       Employee         @relation(fields: [employeeId], references: [id], onDelete: Cascade)
   progress       TaskProgress[]

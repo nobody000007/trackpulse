@@ -262,6 +262,7 @@ export default async function EmployeeDetailPage({ params }: { params: { id: str
                           token={assignment.token}
                           planId={assignment.plan.id}
                           assignmentId={assignment.id}
+                          hasPassword={!!((assignment as any).linkPassword)}
                         />
                       </div>
                     </div>
