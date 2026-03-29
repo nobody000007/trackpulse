@@ -1,8 +1,18 @@
 import Link from "next/link";
 import { PlanList } from "@/frontend/components/plans/plan-list";
 import { Plus } from "lucide-react";
+import { auth } from "@/backend/lib/auth";
+import { PlanService } from "@/backend/services/plan.service";
+import { redirect } from "next/navigation";
 
-export default function PlansPage() {
+export const dynamic = "force-dynamic";
+
+export default async function PlansPage() {
+  const session = await auth();
+  if (!session?.user?.id) redirect("/login");
+
+  const plans = await PlanService.listByManager(session.user.id);
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -17,7 +27,7 @@ export default function PlansPage() {
           <Plus className="w-4 h-4" /> New Plan
         </Link>
       </div>
-      <PlanList />
+      <PlanList initialPlans={plans as any} />
     </div>
   );
 }

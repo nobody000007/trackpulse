@@ -3,34 +3,10 @@ import Link from "next/link";
 import { usePlans } from "@/frontend/hooks/use-plans";
 import { PlanCard } from "./plan-card";
 import { Plus, BookOpen } from "lucide-react";
+import type { Plan } from "@/shared/types/plan";
 
-function PlanSkeleton() {
-  return (
-    <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden animate-pulse">
-      <div className="h-1 bg-gray-200" />
-      <div className="p-5 space-y-3">
-        <div className="h-4 bg-gray-200 rounded w-3/4" />
-        <div className="h-3 bg-gray-100 rounded w-full" />
-        <div className="h-3 bg-gray-100 rounded w-2/3" />
-        <div className="flex gap-3 mt-4">
-          <div className="h-3 bg-gray-100 rounded w-16" />
-          <div className="h-3 bg-gray-100 rounded w-16" />
-        </div>
-      </div>
-    </div>
-  );
-}
-
-export function PlanList() {
-  const { plans, loading, error, deletePlan } = usePlans();
-
-  if (loading) {
-    return (
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {[1, 2, 3].map((i) => <PlanSkeleton key={i} />)}
-      </div>
-    );
-  }
+export function PlanList({ initialPlans }: { initialPlans: Plan[] }) {
+  const { plans, error, deletePlan } = usePlans(initialPlans);
 
   if (error) {
     return (
