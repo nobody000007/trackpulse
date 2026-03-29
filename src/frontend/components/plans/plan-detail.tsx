@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { api } from "@/frontend/lib/api-client";
 import { useEmployees } from "@/frontend/hooks/use-employees";
 import {
@@ -45,6 +46,7 @@ interface Plan {
 }
 
 export function PlanDetail({ planId }: { planId: string }) {
+  const router = useRouter();
   const [plan, setPlan] = useState<Plan | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -94,6 +96,7 @@ export function PlanDetail({ planId }: { planId: string }) {
       const newAssignments = results as Assignment[];
       setPlan((prev) => prev ? { ...prev, assignments: [...prev.assignments, ...newAssignments] } : prev);
       setSelectedEmps(new Set());
+      router.refresh();
     } catch (e: any) {
       setAssignError(e.message ?? "Failed to assign");
     } finally {
