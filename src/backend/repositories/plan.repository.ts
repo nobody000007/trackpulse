@@ -93,4 +93,11 @@ export class PlanRepository {
 
     return prisma.plan.delete({ where: { id: planId } });
   }
+
+  static async findTaskById(taskId: string) {
+    return prisma.task.findUnique({
+      where: { id: taskId },
+      select: { id: true, title: true, url: true, description: true },
+    });
+  }
 }
