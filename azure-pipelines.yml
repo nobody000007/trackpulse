@@ -4,7 +4,7 @@ trigger:
       - main
 
 pool:
-  name: Default
+  name: linux-vm
 
 variables:
   - group: trackpulse-vars
