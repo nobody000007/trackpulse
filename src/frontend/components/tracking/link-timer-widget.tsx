@@ -28,7 +28,7 @@ export function LinkTimerWidget({ token, taskId, taskTitle, url, onClose }: Link
       setElapsed(Math.round((Date.now() - startRef.current) / 1000));
     }, 1000);
 
-    // Detect when employee comes back to this tab after clicking the link and reading the content
+    // Detect when employee comes back to this tab after clicking the link and reading the contentt
     function onVisible() {
       if (document.visibilityState === "visible") setReturned(true);
     }
