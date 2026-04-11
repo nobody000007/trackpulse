@@ -55,3 +55,4 @@ web.config
 *.pem
 *.key
 *.cert
+k8s/06-app-secrets.yaml

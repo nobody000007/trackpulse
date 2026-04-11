@@ -1,0 +1,26 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: trackpulse-config
+  namespace: trackpulse
+data:
+  NODE_ENV: "production"
+
+  # The URL NextAuth uses to redirect after login — must match where you access the app
+  # For local k8s on Docker Desktop, we'll expose the app on port 30080 via NodePort
+  NEXTAUTH_URL: "http://localhost:3000"
+
+  # The public URL the browser uses to reach the app (same as above for local)
+  NEXT_PUBLIC_APP_URL: "http://localhost:3000"
+
+  # The blob storage container name inside Azurite
+  AZURE_STORAGE_CONTAINER: "trackpulse"
+
+  # The "From" display name in outgoing emails
+  EMAIL_FROM: "TrackPulse <noreply@trackpulse.local>"
+
+  # The app's internal port (matches what the Dockerfile exposes)
+  PORT: "8080"
+
+  # Force Next.js standalone server to bind on all interfaces, not just the pod IP
+  HOSTNAME: "0.0.0.0"

@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: trackpulse-service
+  namespace: trackpulse
+spec:
+  selector:
+    app: trackpulse                  # Routes to pods with this label
+  ports:
+    - port: 80                       # Port inside the cluster
+      targetPort: 8080               # Port on the app pod
+      nodePort: 30080                # Port on your Windows machine — access via http://localhost:30080
+  type: NodePort
+  # NodePort exposes the service on a port of the Node (your computer).
+  # Valid NodePort range: 30000–32767.
+  # After applying, open http://localhost:30080 in your browser.

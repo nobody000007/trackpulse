@@ -1,0 +1,41 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres
+  namespace: trackpulse
+spec:
+  replicas: 1                # One database pod — never run multiple replicas without special setup
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:16-alpine          # Official lightweight PostgreSQL image
+          ports:
+            - containerPort: 5432            # Default PostgreSQL port inside the pod
+          env:
+            - name: POSTGRES_DB             # Name of the database to create on startup
+              value: "trackpulse"
+            - name: POSTGRES_USER           # Database superuser username
+              value: "postgres"
+            - name: POSTGRES_PASSWORD       # Database password — keep this in sync with the app secret
+              value: "postgres_local_password"
+          volumeMounts:
+            - name: postgres-storage
+              mountPath: /var/lib/postgresql/data  # Where PostgreSQL stores its data files inside the container
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+      volumes:
+        - name: postgres-storage
+          persistentVolumeClaim:
+            claimName: postgres-pvc          # Links to the PVC we created in step 2

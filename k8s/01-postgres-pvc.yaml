@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgres-pvc
+  namespace: trackpulse
+spec:
+  accessModes:
+    - ReadWriteOnce          # Only one pod can mount this at a time (fine for a single DB pod)
+  resources:
+    requests:
+      storage: 2Gi           # 2 GB of disk space reserved for the database
+  storageClassName: hostpath # Docker Desktop's built-in local storage class

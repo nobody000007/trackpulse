@@ -1,0 +1,38 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: azurite
+  namespace: trackpulse
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: azurite
+  template:
+    metadata:
+      labels:
+        app: azurite
+    spec:
+      containers:
+        - name: azurite
+          image: mcr.microsoft.com/azure-storage/azurite:latest   # Microsoft's official local emulator
+          ports:
+            - containerPort: 10000   # Blob service port
+            - containerPort: 10001   # Queue service port
+            - containerPort: 10002   # Table service port
+          command:
+            - azurite
+            - --blobHost
+            - "0.0.0.0"            # Listen on all interfaces inside the pod
+            - --queueHost
+            - "0.0.0.0"
+            - --tableHost
+            - "0.0.0.0"
+            - --loose                # Allows some non-spec-compliant requests (helps with some SDKs)
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "200m"
