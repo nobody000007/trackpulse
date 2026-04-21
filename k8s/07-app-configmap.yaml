@@ -8,12 +8,10 @@ data:
 
   # The URL NextAuth uses to redirect after login — must match where you access the app
   # For local k8s on Docker Desktop, we'll expose the app on port 30080 via NodePort
-  NEXTAUTH_URL: "http://localhost:3000"
+  NEXTAUTH_URL: "http://4.225.251.237"
 
-  # The public URL the browser uses to reach the app (same as above for local)
-  NEXT_PUBLIC_APP_URL: "http://localhost:3000"
+  NEXT_PUBLIC_APP_URL: "http://4.225.251.237"
 
-  # The blob storage container name inside Azurite
   AZURE_STORAGE_CONTAINER: "trackpulse"
 
   # The "From" display name in outgoing emails

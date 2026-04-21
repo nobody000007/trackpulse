@@ -48,6 +48,14 @@ desktop.ini
 .vercel
 web.config
 
+# Scratch files
+*.json
+!package.json
+!package-lock.json
+!tsconfig*.json
+!next.config.js
+!prisma/*.json
+
 # Claude Code local config
 .claude/
 
@@ -56,3 +64,11 @@ web.config
 *.key
 *.cert
 k8s/06-app-secrets.yaml
+
+# Terraform — never commit secrets or state
+**/.terraform/
+**/*.tfstate
+**/*.tfstate.backup
+**/*.tfstate.*.backup
+**/.terraform.lock.hcl
+**/terraform.tfvars

@@ -1,0 +1,7 @@
+db_admin_password  = "YourStrongPassword123!"
+nextauth_secret    = "your-nextauth-secret"
+groq_api_key       = "gsk_..."
+gmail_user         = "elkhouryralph123@gmail.com"
+gmail_app_password = "your-app-password"
+my_ip              = "70.53.155.166"
+aks_node_ip        = "10.240.0.4"

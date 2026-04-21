@@ -10,19 +10,28 @@ variables:
   - group: trackpulse-vars
 
 steps:
+
+  # Step 1: Build the Docker image and push it to ACR
   - task: Docker@2
     displayName: Build and push image to ACR
     inputs:
       command: buildAndPush
       repository: trackpulse
       dockerfile: Dockerfile
-      containerRegistry: acr-service-connection
+      containerRegistry: acr-service-connection-new
       tags: latest
-      arguments: --build-arg NEXT_PUBLIC_APP_URL=$(NEXT_PUBLIC_APP_URL)
+      arguments: --provenance=false
 
-  - task: AzureWebAppContainer@1
-    displayName: Deploy to Azure Container App Service
+  # Step 2: Deploy the updated image to AKS
+  - task: KubernetesManifest@1
+    displayName: Deploy app to AKS
     inputs:
-      azureSubscription: azure-service-connection
-      appName: $(AZURE_CONTAINER_WEBAPP_NAME)
+      action: deploy
+      connectionType: azureResourceManager
+      azureSubscriptionConnection: azure-service-connection
+      azureResourceGroup: $(RESOURCE_GROUP)
+      kubernetesCluster: trackpulse-aks
+      namespace: trackpulse
+      manifests: k8s/08-app-deployment.yaml
+      imagePullSecrets: acr-pull-secret
       containers: $(ACR_LOGIN_SERVER)/trackpulse:latest

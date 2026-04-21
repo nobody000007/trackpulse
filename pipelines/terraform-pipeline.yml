@@ -1,0 +1,134 @@
+trigger:
+  branches:
+    include:
+      - main
+  paths:
+    include:
+      - terraform/**
+
+parameters:
+  - name: environment
+    displayName: Environment
+    type: string
+    default: dev
+    values:
+      - dev
+      - staging
+      - prod
+
+variables:
+  - group: trackpulse-secrets          # Variable group in Azure DevOps (stores passwords/API keys)
+  - name: workingDir
+    value: $(System.DefaultWorkingDirectory)/terraform/environments/${{ parameters.environment }}
+  - name: terraformVersion
+    value: "1.7.0"
+
+stages:
+
+# ─── Stage 1: Terraform Plan ──────────────────────────────────────────────────
+- stage: Plan
+  displayName: "Terraform Plan (${{ parameters.environment }})"
+  jobs:
+  - job: TerraformPlan
+    displayName: "Plan infrastructure changes"
+    pool:
+      vmImage: ubuntu-latest
+
+    steps:
+    - task: AzureCLI@2
+      displayName: "Terraform Init & Plan"
+      inputs:
+        azureSubscription: acr-service-connection-new   # Your existing service connection
+        scriptType: bash
+        scriptLocation: inlineScript
+        workingDirectory: $(workingDir)
+        inlineScript: |
+          # Install Terraform
+          wget -q https://releases.hashicorp.com/terraform/$(terraformVersion)/terraform_$(terraformVersion)_linux_amd64.zip
+          unzip -q terraform_$(terraformVersion)_linux_amd64.zip
+          sudo mv terraform /usr/local/bin/
+          terraform version
+
+          # Export Azure credentials for Terraform
+          export ARM_CLIENT_ID=$servicePrincipalId
+          export ARM_CLIENT_SECRET=$servicePrincipalKey
+          export ARM_TENANT_ID=$tenantId
+          export ARM_SUBSCRIPTION_ID=$(az account show --query id -o tsv)
+
+          # Init with remote backend
+          terraform init
+
+          # Plan — write output to file for Apply stage
+          terraform plan \
+            -var="db_admin_password=$(DB_ADMIN_PASSWORD)" \
+            -var="nextauth_secret=$(NEXTAUTH_SECRET)" \
+            -var="groq_api_key=$(GROQ_API_KEY)" \
+            -var="gmail_user=$(GMAIL_USER)" \
+            -var="gmail_app_password=$(GMAIL_APP_PASSWORD)" \
+            -out=tfplan
+
+          # Show plan summary
+          terraform show -no-color tfplan
+        addSpnToEnvironment: true   # Exposes servicePrincipalId, servicePrincipalKey, tenantId
+
+    - publish: $(workingDir)/tfplan
+      artifact: tfplan-${{ parameters.environment }}
+      displayName: "Publish plan artifact"
+
+# ─── Stage 2: Approval Gate ───────────────────────────────────────────────────
+- stage: WaitForApproval
+  displayName: "Waiting for approval (${{ parameters.environment }})"
+  dependsOn: Plan
+  condition: succeeded()
+  jobs:
+  - deployment: ApprovalGate
+    displayName: "Manual approval required"
+    environment: ${{ parameters.environment }}-approval   # Create this environment in Azure DevOps
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - script: echo "Approved — proceeding with Terraform Apply"
+
+# ─── Stage 3: Terraform Apply ─────────────────────────────────────────────────
+- stage: Apply
+  displayName: "Terraform Apply (${{ parameters.environment }})"
+  dependsOn: WaitForApproval
+  condition: succeeded()
+  jobs:
+  - job: TerraformApply
+    displayName: "Apply infrastructure changes"
+    pool:
+      vmImage: ubuntu-latest
+
+    steps:
+    - download: current
+      artifact: tfplan-${{ parameters.environment }}
+      displayName: "Download plan artifact"
+
+    - task: AzureCLI@2
+      displayName: "Terraform Apply"
+      inputs:
+        azureSubscription: acr-service-connection-new
+        scriptType: bash
+        scriptLocation: inlineScript
+        workingDirectory: $(workingDir)
+        inlineScript: |
+          # Install Terraform
+          wget -q https://releases.hashicorp.com/terraform/$(terraformVersion)/terraform_$(terraformVersion)_linux_amd64.zip
+          unzip -q terraform_$(terraformVersion)_linux_amd64.zip
+          sudo mv terraform /usr/local/bin/
+
+          # Export Azure credentials
+          export ARM_CLIENT_ID=$servicePrincipalId
+          export ARM_CLIENT_SECRET=$servicePrincipalKey
+          export ARM_TENANT_ID=$tenantId
+          export ARM_SUBSCRIPTION_ID=$(az account show --query id -o tsv)
+
+          # Init (needed again on new agent)
+          terraform init
+
+          # Apply the saved plan
+          cp $(Pipeline.Workspace)/tfplan-${{ parameters.environment }}/tfplan .
+          terraform apply -auto-approve tfplan
+        addSpnToEnvironment: true
