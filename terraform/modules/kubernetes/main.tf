@@ -102,14 +102,20 @@ resource "kubernetes_deployment" "app" {
           }
 
           readiness_probe {
-            http_get { path = "/"; port = 8080 }
+            http_get {
+              path = "/"
+              port = 8080
+            }
             initial_delay_seconds = 15
             period_seconds        = 10
             failure_threshold     = 3
           }
 
           liveness_probe {
-            http_get { path = "/"; port = 8080 }
+            http_get {
+              path = "/"
+              port = 8080
+            }
             initial_delay_seconds = 30
             period_seconds        = 20
             failure_threshold     = 3
