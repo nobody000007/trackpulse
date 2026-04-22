@@ -5,6 +5,7 @@ trigger:
   paths:
     include:
       - terraform/**
+      - pipelines/terraform-pipeline.yml
 
 parameters:
   - name: environment
