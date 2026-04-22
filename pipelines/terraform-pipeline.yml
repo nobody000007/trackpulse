@@ -32,7 +32,7 @@ stages:
   - job: TerraformPlan
     displayName: "Plan infrastructure changes"
     pool:
-      vmImage: ubuntu-latest
+      name: local-agent
 
     steps:
     - task: AzureCLI@2
@@ -99,7 +99,7 @@ stages:
   - job: TerraformApply
     displayName: "Apply infrastructure changes"
     pool:
-      vmImage: ubuntu-latest
+      name: local-agent
 
     steps:
     - download: current
