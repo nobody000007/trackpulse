@@ -18,7 +18,7 @@ parameters:
       - prod
 
 variables:
-  - group: trackpulse-secrets          # Variable group in Azure DevOps (stores passwords/API keys)
+  - group: trackpulse-secrets
   - name: workingDir
     value: $(System.DefaultWorkingDirectory)/terraform/environments/${{ parameters.environment }}
   - name: terraformVersion
@@ -39,15 +39,16 @@ stages:
     - task: AzureCLI@2
       displayName: "Terraform Init & Plan"
       inputs:
-        azureSubscription: azure-service-connection   # Your existing service connection
+        azureSubscription: azure-service-connection
         scriptType: bash
         scriptLocation: inlineScript
         workingDirectory: $(workingDir)
+        addSpnToEnvironment: true
         inlineScript: |
-          # Install Terraform
-          wget -q https://releases.hashicorp.com/terraform/$(terraformVersion)/terraform_$(terraformVersion)_linux_amd64.zip
-          unzip -q terraform_$(terraformVersion)_linux_amd64.zip
-          sudo mv terraform /usr/local/bin/
+          # Install Terraform (Windows binary)
+          curl -sLo terraform.zip "https://releases.hashicorp.com/terraform/$(terraformVersion)/terraform_$(terraformVersion)_windows_amd64.zip"
+          unzip -o terraform.zip
+          export PATH="$PWD:$PATH"
           terraform version
 
           # Export Azure credentials for Terraform
@@ -59,7 +60,7 @@ stages:
           # Init with remote backend
           terraform init
 
-          # Plan — write output to file for Apply stage
+          # Plan
           terraform plan \
             -var="db_admin_password=$(DB_ADMIN_PASSWORD)" \
             -var="nextauth_secret=$(NEXTAUTH_SECRET)" \
@@ -68,9 +69,7 @@ stages:
             -var="gmail_app_password=$(GMAIL_APP_PASSWORD)" \
             -out=tfplan
 
-          # Show plan summary
           terraform show -no-color tfplan
-        addSpnToEnvironment: true   # Exposes servicePrincipalId, servicePrincipalKey, tenantId
 
     - publish: $(workingDir)/tfplan
       artifact: tfplan-${{ parameters.environment }}
@@ -84,12 +83,14 @@ stages:
   jobs:
   - deployment: ApprovalGate
     displayName: "Manual approval required"
-    environment: ${{ parameters.environment }}-approval   # Create this environment in Azure DevOps
+    environment: ${{ parameters.environment }}-approval
+    pool:
+      name: local-agent
     strategy:
       runOnce:
         deploy:
           steps:
-          - script: echo "Approved — proceeding with Terraform Apply"
+          - bash: echo "Approved — proceeding with Terraform Apply"
 
 # ─── Stage 3: Terraform Apply ─────────────────────────────────────────────────
 - stage: Apply
@@ -114,11 +115,12 @@ stages:
         scriptType: bash
         scriptLocation: inlineScript
         workingDirectory: $(workingDir)
+        addSpnToEnvironment: true
         inlineScript: |
-          # Install Terraform
-          wget -q https://releases.hashicorp.com/terraform/$(terraformVersion)/terraform_$(terraformVersion)_linux_amd64.zip
-          unzip -q terraform_$(terraformVersion)_linux_amd64.zip
-          sudo mv terraform /usr/local/bin/
+          # Install Terraform (Windows binary)
+          curl -sLo terraform.zip "https://releases.hashicorp.com/terraform/$(terraformVersion)/terraform_$(terraformVersion)_windows_amd64.zip"
+          unzip -o terraform.zip
+          export PATH="$PWD:$PATH"
 
           # Export Azure credentials
           export ARM_CLIENT_ID=$servicePrincipalId
@@ -126,10 +128,9 @@ stages:
           export ARM_TENANT_ID=$tenantId
           export ARM_SUBSCRIPTION_ID=$(az account show --query id -o tsv)
 
-          # Init (needed again on new agent)
+          # Init
           terraform init
 
           # Apply the saved plan
-          cp $(Pipeline.Workspace)/tfplan-${{ parameters.environment }}/tfplan .
+          cp "$(Pipeline.Workspace)/tfplan-${{ parameters.environment }}/tfplan" .
           terraform apply -auto-approve tfplan
-        addSpnToEnvironment: true
