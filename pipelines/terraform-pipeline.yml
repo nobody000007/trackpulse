@@ -20,7 +20,7 @@ parameters:
 variables:
   - group: trackpulse-secrets
   - name: workingDir
-    value: $(System.DefaultWorkingDirectory)/terraform/environments/${{ parameters.environment }}
+    value: $(System.DefaultWorkingDirectory)\terraform\environments\${{ parameters.environment }}
   - name: terraformVersion
     value: "1.7.0"
 
@@ -40,38 +40,39 @@ stages:
       displayName: "Terraform Init & Plan"
       inputs:
         azureSubscription: azure-service-connection
-        scriptType: bash
+        scriptType: ps
         scriptLocation: inlineScript
         workingDirectory: $(workingDir)
         addSpnToEnvironment: true
         inlineScript: |
-          # Install Terraform (Windows binary)
-          curl -sLo terraform.zip "https://releases.hashicorp.com/terraform/$(terraformVersion)/terraform_$(terraformVersion)_windows_amd64.zip"
-          unzip -o terraform.zip
-          export PATH="$PWD:$PATH"
+          # Install Terraform
+          $url = "https://releases.hashicorp.com/terraform/$(terraformVersion)/terraform_$(terraformVersion)_windows_amd64.zip"
+          Invoke-WebRequest -Uri $url -OutFile "terraform.zip"
+          Expand-Archive -Path "terraform.zip" -DestinationPath "." -Force
+          $env:PATH = "$PWD;$env:PATH"
           terraform version
 
           # Export Azure credentials for Terraform
-          export ARM_CLIENT_ID=$servicePrincipalId
-          export ARM_CLIENT_SECRET=$servicePrincipalKey
-          export ARM_TENANT_ID=$tenantId
-          export ARM_SUBSCRIPTION_ID=$(az account show --query id -o tsv)
+          $env:ARM_CLIENT_ID       = $env:servicePrincipalId
+          $env:ARM_CLIENT_SECRET   = $env:servicePrincipalKey
+          $env:ARM_TENANT_ID       = $env:tenantId
+          $env:ARM_SUBSCRIPTION_ID = (az account show --query id -o tsv)
 
           # Init with remote backend
           terraform init
 
           # Plan
-          terraform plan \
-            -var="db_admin_password=$(DB_ADMIN_PASSWORD)" \
-            -var="nextauth_secret=$(NEXTAUTH_SECRET)" \
-            -var="groq_api_key=$(GROQ_API_KEY)" \
-            -var="gmail_user=$(GMAIL_USER)" \
-            -var="gmail_app_password=$(GMAIL_APP_PASSWORD)" \
+          terraform plan `
+            -var="db_admin_password=$(DB_ADMIN_PASSWORD)" `
+            -var="nextauth_secret=$(NEXTAUTH_SECRET)" `
+            -var="groq_api_key=$(GROQ_API_KEY)" `
+            -var="gmail_user=$(GMAIL_USER)" `
+            -var="gmail_app_password=$(GMAIL_APP_PASSWORD)" `
             -out=tfplan
 
           terraform show -no-color tfplan
 
-    - publish: $(workingDir)/tfplan
+    - publish: $(workingDir)\tfplan
       artifact: tfplan-${{ parameters.environment }}
       displayName: "Publish plan artifact"
 
@@ -90,7 +91,7 @@ stages:
       runOnce:
         deploy:
           steps:
-          - bash: echo "Approved — proceeding with Terraform Apply"
+          - script: echo Approved
 
 # ─── Stage 3: Terraform Apply ─────────────────────────────────────────────────
 - stage: Apply
@@ -112,25 +113,26 @@ stages:
       displayName: "Terraform Apply"
       inputs:
         azureSubscription: azure-service-connection
-        scriptType: bash
+        scriptType: ps
         scriptLocation: inlineScript
         workingDirectory: $(workingDir)
         addSpnToEnvironment: true
         inlineScript: |
-          # Install Terraform (Windows binary)
-          curl -sLo terraform.zip "https://releases.hashicorp.com/terraform/$(terraformVersion)/terraform_$(terraformVersion)_windows_amd64.zip"
-          unzip -o terraform.zip
-          export PATH="$PWD:$PATH"
+          # Install Terraform
+          $url = "https://releases.hashicorp.com/terraform/$(terraformVersion)/terraform_$(terraformVersion)_windows_amd64.zip"
+          Invoke-WebRequest -Uri $url -OutFile "terraform.zip"
+          Expand-Archive -Path "terraform.zip" -DestinationPath "." -Force
+          $env:PATH = "$PWD;$env:PATH"
 
           # Export Azure credentials
-          export ARM_CLIENT_ID=$servicePrincipalId
-          export ARM_CLIENT_SECRET=$servicePrincipalKey
-          export ARM_TENANT_ID=$tenantId
-          export ARM_SUBSCRIPTION_ID=$(az account show --query id -o tsv)
+          $env:ARM_CLIENT_ID       = $env:servicePrincipalId
+          $env:ARM_CLIENT_SECRET   = $env:servicePrincipalKey
+          $env:ARM_TENANT_ID       = $env:tenantId
+          $env:ARM_SUBSCRIPTION_ID = (az account show --query id -o tsv)
 
           # Init
           terraform init
 
           # Apply the saved plan
-          cp "$(Pipeline.Workspace)/tfplan-${{ parameters.environment }}/tfplan" .
+          Copy-Item "$(Pipeline.Workspace)\tfplan-${{ parameters.environment }}\tfplan" -Destination "."
           terraform apply -auto-approve tfplan
