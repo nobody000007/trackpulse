@@ -38,7 +38,7 @@ stages:
     - task: AzureCLI@2
       displayName: "Terraform Init & Plan"
       inputs:
-        azureSubscription: acr-service-connection-new   # Your existing service connection
+        azureSubscription: azure-service-connection   # Your existing service connection
         scriptType: bash
         scriptLocation: inlineScript
         workingDirectory: $(workingDir)
@@ -109,7 +109,7 @@ stages:
     - task: AzureCLI@2
       displayName: "Terraform Apply"
       inputs:
-        azureSubscription: acr-service-connection-new
+        azureSubscription: azure-service-connection
         scriptType: bash
         scriptLocation: inlineScript
         workingDirectory: $(workingDir)
