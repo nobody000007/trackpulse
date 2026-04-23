@@ -198,10 +198,6 @@ stages:
             --name trackpulse-${{ parameters.environment }}-aks `
             --overwrite-existing
 
-          # Run database migration
-          kubectl apply -f k8s/10-db-migrate-job.yaml
-          kubectl wait --for=condition=complete job/db-migrate -n trackpulse --timeout=120s
-
-          # Restart deployment to pull new image
+          # Restart deployment to pull new image (init container handles migration)
           kubectl rollout restart deployment/trackpulse -n trackpulse
-          kubectl rollout status deployment/trackpulse -n trackpulse
+          kubectl rollout status deployment/trackpulse -n trackpulse --timeout=300s
