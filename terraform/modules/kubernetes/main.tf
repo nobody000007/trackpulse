@@ -70,6 +70,37 @@ resource "kubernetes_deployment" "app" {
       spec {
         image_pull_secrets { name = kubernetes_secret.acr_pull.metadata[0].name }
 
+        init_container {
+          name              = "db-migrate"
+          image             = "${var.acr_login_server}/trackpulse:latest"
+          image_pull_policy = "Always"
+          command           = ["npx", "prisma", "migrate", "deploy"]
+
+          env_from {
+            config_map_ref { name = kubernetes_config_map.app.metadata[0].name }
+          }
+
+          dynamic "env" {
+            for_each = {
+              DATABASE_URL                    = "DATABASE_URL"
+              NEXTAUTH_SECRET                 = "NEXTAUTH_SECRET"
+              GROQ_API_KEY                    = "GROQ_API_KEY"
+              GMAIL_USER                      = "GMAIL_USER"
+              GMAIL_APP_PASSWORD              = "GMAIL_APP_PASSWORD"
+              AZURE_STORAGE_CONNECTION_STRING = "AZURE_STORAGE_CONNECTION_STRING"
+            }
+            content {
+              name = env.key
+              value_from {
+                secret_key_ref {
+                  name = kubernetes_secret.app.metadata[0].name
+                  key  = env.value
+                }
+              }
+            }
+          }
+        }
+
         container {
           name              = "trackpulse"
           image             = "${var.acr_login_server}/trackpulse:latest"
