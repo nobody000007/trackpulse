@@ -23,6 +23,8 @@ variables:
     value: $(System.DefaultWorkingDirectory)\terraform\environments\${{ parameters.environment }}
   - name: terraformVersion
     value: "1.7.0"
+  - name: acrName
+    value: trackpulse${{ parameters.environment }}registry
 
 stages:
 
@@ -136,3 +138,64 @@ stages:
           # Apply the saved plan
           Copy-Item "$(Pipeline.Workspace)\tfplan-${{ parameters.environment }}\tfplan" -Destination "."
           terraform apply -auto-approve tfplan
+
+# ─── Stage 4: Build & Push Docker Image ───────────────────────────────────────
+- stage: BuildAndPush
+  displayName: "Build & Push Image (${{ parameters.environment }})"
+  dependsOn: Apply
+  condition: succeeded()
+  jobs:
+  - job: Docker
+    displayName: "Build and push to ACR"
+    pool:
+      name: local-agent
+
+    steps:
+    - task: AzureCLI@2
+      displayName: "Build & Push Docker Image"
+      inputs:
+        azureSubscription: azure-service-connection
+        scriptType: ps
+        scriptLocation: inlineScript
+        addSpnToEnvironment: true
+        inlineScript: |
+          # Login to ACR
+          az acr login --name $(acrName)
+
+          # Build and push
+          docker build -t "$(acrName).azurecr.io/trackpulse:latest" .
+          docker push "$(acrName).azurecr.io/trackpulse:latest"
+
+# ─── Stage 5: Post Deploy (Migration + Restart) ───────────────────────────────
+- stage: PostDeploy
+  displayName: "Post Deploy (${{ parameters.environment }})"
+  dependsOn: BuildAndPush
+  condition: succeeded()
+  jobs:
+  - job: PostDeploy
+    displayName: "Run migration and restart deployment"
+    pool:
+      name: local-agent
+
+    steps:
+    - task: AzureCLI@2
+      displayName: "Migrate DB and restart app"
+      inputs:
+        azureSubscription: azure-service-connection
+        scriptType: ps
+        scriptLocation: inlineScript
+        addSpnToEnvironment: true
+        inlineScript: |
+          # Connect kubectl to the cluster
+          az aks get-credentials `
+            --resource-group rg-internship-handson-sc-001 `
+            --name trackpulse-${{ parameters.environment }}-aks `
+            --overwrite-existing
+
+          # Run database migration
+          kubectl apply -f k8s/10-db-migrate-job.yaml
+          kubectl wait --for=condition=complete job/db-migrate -n trackpulse --timeout=120s
+
+          # Restart deployment to pull new image
+          kubectl rollout restart deployment/trackpulse -n trackpulse
+          kubectl rollout status deployment/trackpulse -n trackpulse
