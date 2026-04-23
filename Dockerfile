@@ -34,6 +34,8 @@ COPY --from=builder /app/prisma ./prisma
 # Copy Prisma engine binaries explicitly
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder /app/node_modules/@prisma/client ./node_modules/@prisma/client
+COPY --from=builder /app/node_modules/prisma ./node_modules/prisma
+COPY --from=builder /app/node_modules/.bin/prisma ./node_modules/.bin/prisma
 
 EXPOSE 8080
 
