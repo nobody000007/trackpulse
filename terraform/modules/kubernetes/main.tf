@@ -74,7 +74,7 @@ resource "kubernetes_deployment" "app" {
           name              = "db-migrate"
           image             = "${var.acr_login_server}/trackpulse:latest"
           image_pull_policy = "Always"
-          command           = ["/app/node_modules/.bin/prisma", "migrate", "deploy"]
+          command           = ["node", "/app/node_modules/prisma/build/index.js", "migrate", "deploy"]
 
           env_from {
             config_map_ref { name = kubernetes_config_map.app.metadata[0].name }
