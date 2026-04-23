@@ -74,7 +74,7 @@ stages:
 
           terraform show -no-color tfplan
 
-    - publish: $(workingDir)\tfplan
+    - publish: $(workingDir)/tfplan
       artifact: tfplan-${{ parameters.environment }}
       displayName: "Publish plan artifact"
 
@@ -136,7 +136,13 @@ stages:
           terraform init
 
           # Apply the saved plan
-          Copy-Item "$(Pipeline.Workspace)\tfplan-${{ parameters.environment }}\tfplan" -Destination "."
+          $planFile = "$(Pipeline.Workspace)\tfplan-${{ parameters.environment }}\tfplan"
+          Write-Host "Looking for plan at: $planFile"
+          if (-not (Test-Path $planFile)) {
+            Write-Error "Plan file not found at $planFile"
+            exit 1
+          }
+          Copy-Item $planFile -Destination "tfplan"
           terraform apply -auto-approve tfplan
 
 # ─── Stage 4: Build & Push Docker Image ───────────────────────────────────────
