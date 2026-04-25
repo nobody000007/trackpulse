@@ -1,104 +1,118 @@
+# ─── Trigger ──────────────────────────────────────────────────────────────────
+# Automatically runs this pipeline when code is pushed to the main branch
+# BUT only if files inside terraform/ or this pipeline file itself changed
 trigger:
   branches:
     include:
-      - main
+      - main               # only watch the main branch
   paths:
     include:
-      - terraform/**
-      - pipelines/terraform-pipeline.yml
+      - terraform/**                        # any terraform file change
+      - pipelines/terraform-pipeline.yml   # or this pipeline file itself
 
+# ─── Parameters ───────────────────────────────────────────────────────────────
+# When running manually, you can choose which environment to deploy to
+# When triggered automatically by a push, it always defaults to dev
 parameters:
   - name: environment
-    displayName: Environment
+    displayName: Environment     # label shown in Azure DevOps UI
     type: string
-    default: dev
+    default: dev                 # auto-trigger always deploys to dev
     values:
       - dev
       - staging
       - prod
 
+# ─── Variables ────────────────────────────────────────────────────────────────
 variables:
-  - group: trackpulse-secrets
-  - name: workingDir
+  - group: trackpulse-secrets    # pulls secrets from Azure DevOps Library (passwords, API keys)
+  - name: workingDir             # path to the environment terraform folder
     value: $(System.DefaultWorkingDirectory)\terraform\environments\${{ parameters.environment }}
-  - name: terraformVersion
-    value: "1.7.0"
-  - name: acrName
-    value: trackpulse${{ parameters.environment }}registry
 
+# ─── Stages ───────────────────────────────────────────────────────────────────
 stages:
 
 # ─── Stage 1: Terraform Plan ──────────────────────────────────────────────────
+# Shows WHAT will change in Azure without actually changing anything yet
 - stage: Plan
   displayName: "Terraform Plan (${{ parameters.environment }})"
   jobs:
   - job: TerraformPlan
     displayName: "Plan infrastructure changes"
     pool:
-      name: local-agent
+      name: local-agent    # runs on your local machine (the self-hosted agent)
 
     steps:
+    # Restore the .terraform/providers directory from cache if it exists
+    # Cache key is tied to the lock file — if providers change, cache is invalidated automatically
+    - task: Cache@2
+      displayName: "Restore Terraform provider cache"
+      inputs:
+        key: 'terraform | "${{ parameters.environment }}" | terraform/environments/${{ parameters.environment }}/.terraform.lock.hcl'
+        restoreKeys: 'terraform | "${{ parameters.environment }}"'
+        path: $(workingDir)/.terraform
+        cacheHitVar: TF_CACHE_HIT   # set to "true" if cache was found
+
     - task: AzureCLI@2
       displayName: "Terraform Init & Plan"
       inputs:
-        azureSubscription: azure-service-connection
-        scriptType: ps
-        scriptLocation: inlineScript
-        workingDirectory: $(workingDir)
-        addSpnToEnvironment: true
+        azureSubscription: azure-service-connection   # service connection to authenticate with Azure
+        scriptType: ps                                # use PowerShell (works on Windows agent)
+        scriptLocation: inlineScript                  # script is written directly below
+        workingDirectory: $(workingDir)               # run commands inside terraform/environments/dev
+        addSpnToEnvironment: true                     # exposes servicePrincipalId, servicePrincipalKey, tenantId as env vars
         inlineScript: |
-          # Install Terraform
-          $url = "https://releases.hashicorp.com/terraform/$(terraformVersion)/terraform_$(terraformVersion)_windows_amd64.zip"
-          Invoke-WebRequest -Uri $url -OutFile "terraform.zip"
-          Expand-Archive -Path "terraform.zip" -DestinationPath "." -Force
-          $env:PATH = "$PWD;$env:PATH"
-          terraform version
-
-          # Export Azure credentials for Terraform
+          # Azure credentials from the service connection
           $env:ARM_CLIENT_ID       = $env:servicePrincipalId
           $env:ARM_CLIENT_SECRET   = $env:servicePrincipalKey
           $env:ARM_TENANT_ID       = $env:tenantId
           $env:ARM_SUBSCRIPTION_ID = (az account show --query id -o tsv)
 
-          # Init with remote backend
+          # Connect to remote backend and download providers (near-instant if cache was restored)
           terraform init
 
-          # Plan
+          # Calculate what changes are needed and save them to a file called tfplan
+          # Secrets are passed as -var flags so they never need to be in code
           terraform plan `
-            -var="db_admin_password=$(DB_ADMIN_PASSWORD)" `
-            -var="nextauth_secret=$(NEXTAUTH_SECRET)" `
-            -var="groq_api_key=$(GROQ_API_KEY)" `
-            -var="gmail_user=$(GMAIL_USER)" `
-            -var="gmail_app_password=$(GMAIL_APP_PASSWORD)" `
-            -out=tfplan
+            -var="db_admin_password=$(DB_ADMIN_PASSWORD)" `   # from variable group
+            -var="nextauth_secret=$(NEXTAUTH_SECRET)" `        # from variable group
+            -var="groq_api_key=$(GROQ_API_KEY)" `             # from variable group
+            -var="gmail_user=$(GMAIL_USER)" `                 # from variable group
+            -var="gmail_app_password=$(GMAIL_APP_PASSWORD)" ` # from variable group
+            -out=tfplan                                        # save plan to file
 
+          # Print a human-readable summary of the plan so you can review it
           terraform show -no-color tfplan
 
+    # Save the tfplan file as a pipeline artifact so the Apply stage can download it
     - publish: $(workingDir)/tfplan
-      artifact: tfplan-${{ parameters.environment }}
+      artifact: tfplan-${{ parameters.environment }}   # artifact name includes environment
       displayName: "Publish plan artifact"
 
 # ─── Stage 2: Approval Gate ───────────────────────────────────────────────────
+# Pipeline PAUSES here — you must manually approve before Apply runs
+# This gives you a chance to review the plan before anything changes in Azure
 - stage: WaitForApproval
   displayName: "Waiting for approval (${{ parameters.environment }})"
-  dependsOn: Plan
-  condition: succeeded()
+  dependsOn: Plan          # only runs after Plan succeeds
+  condition: succeeded()   # skip if Plan failed
   jobs:
   - deployment: ApprovalGate
     displayName: "Manual approval required"
-    environment: ${{ parameters.environment }}-approval
+    environment: ${{ parameters.environment }}-approval   # matches the environment you created in Azure DevOps with an approver
     pool:
       name: local-agent
     strategy:
       runOnce:
         deploy:
           steps:
-          - script: echo Approved
+          - script: echo Approved   # just prints Approved, the real gate is the environment approval above
 
 # ─── Stage 3: Terraform Apply ─────────────────────────────────────────────────
+# Actually creates/updates/deletes the Azure resources based on the saved plan
 - stage: Apply
   displayName: "Terraform Apply (${{ parameters.environment }})"
-  dependsOn: WaitForApproval
+  dependsOn: WaitForApproval   # only runs after approval
   condition: succeeded()
   jobs:
   - job: TerraformApply
@@ -107,9 +121,18 @@ stages:
       name: local-agent
 
     steps:
+    # Download the tfplan file that was saved in the Plan stage
     - download: current
       artifact: tfplan-${{ parameters.environment }}
       displayName: "Download plan artifact"
+
+    # Restore the .terraform directory from cache — required since there is no terraform init in this stage
+    - task: Cache@2
+      displayName: "Restore Terraform provider cache"
+      inputs:
+        key: 'terraform | "${{ parameters.environment }}" | terraform/environments/${{ parameters.environment }}/.terraform.lock.hcl'
+        restoreKeys: 'terraform | "${{ parameters.environment }}"'
+        path: $(workingDir)/.terraform
 
     - task: AzureCLI@2
       displayName: "Terraform Apply"
@@ -120,22 +143,13 @@ stages:
         workingDirectory: $(workingDir)
         addSpnToEnvironment: true
         inlineScript: |
-          # Install Terraform
-          $url = "https://releases.hashicorp.com/terraform/$(terraformVersion)/terraform_$(terraformVersion)_windows_amd64.zip"
-          Invoke-WebRequest -Uri $url -OutFile "terraform.zip"
-          Expand-Archive -Path "terraform.zip" -DestinationPath "." -Force
-          $env:PATH = "$PWD;$env:PATH"
-
-          # Export Azure credentials
+          # Azure credentials from the service connection
           $env:ARM_CLIENT_ID       = $env:servicePrincipalId
           $env:ARM_CLIENT_SECRET   = $env:servicePrincipalKey
           $env:ARM_TENANT_ID       = $env:tenantId
           $env:ARM_SUBSCRIPTION_ID = (az account show --query id -o tsv)
 
-          # Init
-          terraform init
-
-          # Apply the saved plan
+          # Find the saved plan file downloaded from the Plan stage
           $planFile = "$(Pipeline.Workspace)\tfplan-${{ parameters.environment }}\tfplan"
           Write-Host "Looking for plan at: $planFile"
           if (-not (Test-Path $planFile)) {
@@ -143,61 +157,6 @@ stages:
             exit 1
           }
           Copy-Item $planFile -Destination "tfplan"
+
+          # Apply exactly what was planned — no surprises, no extra prompts
           terraform apply -auto-approve tfplan
-
-# ─── Stage 4: Build & Push Docker Image ───────────────────────────────────────
-- stage: BuildAndPush
-  displayName: "Build & Push Image (${{ parameters.environment }})"
-  dependsOn: Apply
-  condition: succeeded()
-  jobs:
-  - job: Docker
-    displayName: "Build and push to ACR"
-    pool:
-      name: local-agent
-
-    steps:
-    - task: AzureCLI@2
-      displayName: "Build & Push Docker Image"
-      inputs:
-        azureSubscription: azure-service-connection
-        scriptType: ps
-        scriptLocation: inlineScript
-        addSpnToEnvironment: true
-        inlineScript: |
-          # Login to ACR
-          az acr login --name $(acrName)
-
-          # Build and push
-          docker build -t "$(acrName).azurecr.io/trackpulse:latest" .
-          docker push "$(acrName).azurecr.io/trackpulse:latest"
-
-# ─── Stage 5: Post Deploy (Migration + Restart) ───────────────────────────────
-- stage: PostDeploy
-  displayName: "Post Deploy (${{ parameters.environment }})"
-  dependsOn: BuildAndPush
-  condition: succeeded()
-  jobs:
-  - job: PostDeploy
-    displayName: "Run migration and restart deployment"
-    pool:
-      name: local-agent
-
-    steps:
-    - task: AzureCLI@2
-      displayName: "Migrate DB and restart app"
-      inputs:
-        azureSubscription: azure-service-connection
-        scriptType: ps
-        scriptLocation: inlineScript
-        addSpnToEnvironment: true
-        inlineScript: |
-          # Connect kubectl to the cluster
-          az aks get-credentials `
-            --resource-group rg-internship-handson-sc-001 `
-            --name trackpulse-${{ parameters.environment }}-aks `
-            --overwrite-existing
-
-          # Restart deployment to pull new image (init container handles migration)
-          kubectl rollout restart deployment/trackpulse -n trackpulse
-          kubectl rollout status deployment/trackpulse -n trackpulse --timeout=300s
