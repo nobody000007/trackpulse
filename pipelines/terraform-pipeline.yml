@@ -1,138 +1,101 @@
-# ─── Trigger ──────────────────────────────────────────────────────────────────
-# Automatically runs this pipeline when code is pushed to the main branch
-# BUT only if files inside terraform/ or this pipeline file itself changed
 trigger:
   branches:
     include:
-      - main               # only watch the main branch
+      - main
   paths:
     include:
-      - terraform/**                        # any terraform file change
-      - pipelines/terraform-pipeline.yml   # or this pipeline file itself
+      - terraform/**
+      - pipelines/terraform-pipeline.yml
 
-# ─── Parameters ───────────────────────────────────────────────────────────────
-# When running manually, you can choose which environment to deploy to
-# When triggered automatically by a push, it always defaults to dev
 parameters:
   - name: environment
-    displayName: Environment     # label shown in Azure DevOps UI
+    displayName: Environment
     type: string
-    default: dev                 # auto-trigger always deploys to dev
+    default: dev
     values:
       - dev
       - staging
       - prod
 
-# ─── Variables ────────────────────────────────────────────────────────────────
 variables:
-  - group: trackpulse-secrets    # pulls secrets from Azure DevOps Library (passwords, API keys)
-  - name: workingDir             # path to the environment terraform folder
+  - group: trackpulse-secrets
+  - name: workingDir
     value: $(System.DefaultWorkingDirectory)\terraform\environments\${{ parameters.environment }}
 
-# ─── Stages ───────────────────────────────────────────────────────────────────
 stages:
 
-# ─── Stage 1: Terraform Plan ──────────────────────────────────────────────────
-# Shows WHAT will change in Azure without actually changing anything yet
+# ─── Stage 1: Plan ────────────────────────────────────────────────────────────
 - stage: Plan
   displayName: "Terraform Plan (${{ parameters.environment }})"
   jobs:
   - job: TerraformPlan
-    displayName: "Plan infrastructure changes"
+    displayName: "Plan"
     pool:
-      name: local-agent    # runs on your local machine (the self-hosted agent)
+      name: local-agent
 
     steps:
-    # Restore the .terraform/providers directory from cache if it exists
-    # Cache key is tied to the lock file — if providers change, cache is invalidated automatically
-    - task: Cache@2
-      displayName: "Restore Terraform provider cache"
-      inputs:
-        key: 'terraform | "${{ parameters.environment }}" | terraform/environments/${{ parameters.environment }}/.terraform.lock.hcl'
-        restoreKeys: 'terraform | "${{ parameters.environment }}"'
-        path: $(workingDir)/.terraform
-        cacheHitVar: TF_CACHE_HIT   # set to "true" if cache was found
-
     - task: AzureCLI@2
       displayName: "Terraform Init & Plan"
       inputs:
-        azureSubscription: azure-service-connection   # service connection to authenticate with Azure
-        scriptType: ps                                # use PowerShell (works on Windows agent)
-        scriptLocation: inlineScript                  # script is written directly below
-        workingDirectory: $(workingDir)               # run commands inside terraform/environments/dev
-        addSpnToEnvironment: true                     # exposes servicePrincipalId, servicePrincipalKey, tenantId as env vars
+        azureSubscription: azure-service-connection
+        scriptType: ps
+        scriptLocation: inlineScript
+        workingDirectory: $(workingDir)
+        addSpnToEnvironment: true
         inlineScript: |
-          # Azure credentials from the service connection
           $env:ARM_CLIENT_ID       = $env:servicePrincipalId
           $env:ARM_CLIENT_SECRET   = $env:servicePrincipalKey
           $env:ARM_TENANT_ID       = $env:tenantId
           $env:ARM_SUBSCRIPTION_ID = (az account show --query id -o tsv)
 
-          # Connect to remote backend and download providers (near-instant if cache was restored)
           terraform init
 
-          # Calculate what changes are needed and save them to a file called tfplan
-          # Secrets are passed as -var flags so they never need to be in code
           terraform plan `
-            -var="db_admin_password=$(DB_ADMIN_PASSWORD)" `   # from variable group
-            -var="nextauth_secret=$(NEXTAUTH_SECRET)" `        # from variable group
-            -var="groq_api_key=$(GROQ_API_KEY)" `             # from variable group
-            -var="gmail_user=$(GMAIL_USER)" `                 # from variable group
-            -var="gmail_app_password=$(GMAIL_APP_PASSWORD)" ` # from variable group
-            -out=tfplan                                        # save plan to file
+            -var="db_admin_password=$(DB_ADMIN_PASSWORD)" `
+            -var="nextauth_secret=$(NEXTAUTH_SECRET)" `
+            -var="groq_api_key=$(GROQ_API_KEY)" `
+            -var="gmail_user=$(GMAIL_USER)" `
+            -var="gmail_app_password=$(GMAIL_APP_PASSWORD)" `
+            -out=tfplan
 
-          # Print a human-readable summary of the plan so you can review it
           terraform show -no-color tfplan
 
-    # Save the tfplan file as a pipeline artifact so the Apply stage can download it
     - publish: $(workingDir)/tfplan
-      artifact: tfplan-${{ parameters.environment }}   # artifact name includes environment
+      artifact: tfplan-${{ parameters.environment }}
       displayName: "Publish plan artifact"
 
-# ─── Stage 2: Approval Gate ───────────────────────────────────────────────────
-# Pipeline PAUSES here — you must manually approve before Apply runs
-# This gives you a chance to review the plan before anything changes in Azure
+# ─── Stage 2: Approval ────────────────────────────────────────────────────────
 - stage: WaitForApproval
   displayName: "Waiting for approval (${{ parameters.environment }})"
-  dependsOn: Plan          # only runs after Plan succeeds
-  condition: succeeded()   # skip if Plan failed
+  dependsOn: Plan
+  condition: succeeded()
   jobs:
   - deployment: ApprovalGate
-    displayName: "Manual approval required"
-    environment: ${{ parameters.environment }}-approval   # matches the environment you created in Azure DevOps with an approver
+    displayName: "Manual approval"
+    environment: ${{ parameters.environment }}-approval
     pool:
       name: local-agent
     strategy:
       runOnce:
         deploy:
           steps:
-          - script: echo Approved   # just prints Approved, the real gate is the environment approval above
+          - script: echo Approved
 
-# ─── Stage 3: Terraform Apply ─────────────────────────────────────────────────
-# Actually creates/updates/deletes the Azure resources based on the saved plan
+# ─── Stage 3: Apply ───────────────────────────────────────────────────────────
 - stage: Apply
   displayName: "Terraform Apply (${{ parameters.environment }})"
-  dependsOn: WaitForApproval   # only runs after approval
+  dependsOn: WaitForApproval
   condition: succeeded()
   jobs:
   - job: TerraformApply
-    displayName: "Apply infrastructure changes"
+    displayName: "Apply"
     pool:
       name: local-agent
 
     steps:
-    # Download the tfplan file that was saved in the Plan stage
     - download: current
       artifact: tfplan-${{ parameters.environment }}
       displayName: "Download plan artifact"
-
-    # Restore the .terraform directory from cache — required since there is no terraform init in this stage
-    - task: Cache@2
-      displayName: "Restore Terraform provider cache"
-      inputs:
-        key: 'terraform | "${{ parameters.environment }}" | terraform/environments/${{ parameters.environment }}/.terraform.lock.hcl'
-        restoreKeys: 'terraform | "${{ parameters.environment }}"'
-        path: $(workingDir)/.terraform
 
     - task: AzureCLI@2
       displayName: "Terraform Apply"
@@ -143,20 +106,16 @@ stages:
         workingDirectory: $(workingDir)
         addSpnToEnvironment: true
         inlineScript: |
-          # Azure credentials from the service connection
           $env:ARM_CLIENT_ID       = $env:servicePrincipalId
           $env:ARM_CLIENT_SECRET   = $env:servicePrincipalKey
           $env:ARM_TENANT_ID       = $env:tenantId
           $env:ARM_SUBSCRIPTION_ID = (az account show --query id -o tsv)
 
-          # Find the saved plan file downloaded from the Plan stage
           $planFile = "$(Pipeline.Workspace)\tfplan-${{ parameters.environment }}\tfplan"
-          Write-Host "Looking for plan at: $planFile"
           if (-not (Test-Path $planFile)) {
             Write-Error "Plan file not found at $planFile"
             exit 1
           }
           Copy-Item $planFile -Destination "tfplan"
 
-          # Apply exactly what was planned — no surprises, no extra prompts
           terraform apply -auto-approve tfplan
