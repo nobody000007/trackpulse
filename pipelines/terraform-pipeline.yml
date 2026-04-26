@@ -48,6 +48,10 @@ stages:
           $env:ARM_TENANT_ID       = $env:tenantId
           $env:ARM_SUBSCRIPTION_ID = (az account show --query id -o tsv)
 
+          # Remove stale .terraform state to guarantee a clean init
+          if (Test-Path ".terraform") { Remove-Item -Recurse -Force ".terraform" }
+          if (Test-Path ".terraform.lock.hcl") { Remove-Item -Force ".terraform.lock.hcl" }
+
           terraform init
 
           terraform plan `
@@ -60,9 +64,16 @@ stages:
 
           terraform show -no-color tfplan
 
+    # Publish the plan file so Apply can use it
     - publish: $(workingDir)/tfplan
       artifact: tfplan-${{ parameters.environment }}
       displayName: "Publish plan artifact"
+
+    # Publish the lock file — it is gitignored so git clean removes it between jobs
+    # Apply needs the exact same lock file that was present when the plan was created
+    - publish: $(workingDir)/.terraform.lock.hcl
+      artifact: lockfile-${{ parameters.environment }}
+      displayName: "Publish lock file artifact"
 
 # ─── Stage 2: Approval ────────────────────────────────────────────────────────
 - stage: WaitForApproval
@@ -97,6 +108,10 @@ stages:
       artifact: tfplan-${{ parameters.environment }}
       displayName: "Download plan artifact"
 
+    - download: current
+      artifact: lockfile-${{ parameters.environment }}
+      displayName: "Download lock file artifact"
+
     - task: AzureCLI@2
       displayName: "Terraform Apply"
       inputs:
@@ -110,6 +125,9 @@ stages:
           $env:ARM_CLIENT_SECRET   = $env:servicePrincipalKey
           $env:ARM_TENANT_ID       = $env:tenantId
           $env:ARM_SUBSCRIPTION_ID = (az account show --query id -o tsv)
+
+          # Restore the lock file from Plan (git clean removed it during checkout)
+          Copy-Item "$(Pipeline.Workspace)\lockfile-${{ parameters.environment }}\.terraform.lock.hcl" -Destination "."
 
           $planFile = "$(Pipeline.Workspace)\tfplan-${{ parameters.environment }}\tfplan"
           if (-not (Test-Path $planFile)) {
