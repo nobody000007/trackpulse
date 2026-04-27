@@ -17,6 +17,7 @@
   },
   "dependencies": {
     "@azure/storage-blob": "^12.24.0",
+    "applicationinsights": "^3.0.0",
     "@mozilla/readability": "^0.6.0",
     "@prisma/client": "^5.14.0",
     "@tailwindcss/typography": "^0.5.19",

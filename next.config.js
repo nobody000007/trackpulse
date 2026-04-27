@@ -2,6 +2,7 @@
 const nextConfig = {
   output: "standalone",
   experimental: {
+    instrumentationHook: true,
     outputFileTracingIncludes: {
       "/**/*": ["./node_modules/.prisma/client/**/*"],
     },

@@ -8,12 +8,13 @@ resource "kubernetes_secret" "app" {
     namespace = kubernetes_namespace.main.metadata[0].name
   }
   data = {
-    DATABASE_URL                    = var.db_url
-    NEXTAUTH_SECRET                 = var.nextauth_secret
-    GROQ_API_KEY                    = var.groq_api_key
-    GMAIL_USER                      = var.gmail_user
-    GMAIL_APP_PASSWORD              = var.gmail_app_password
-    AZURE_STORAGE_CONNECTION_STRING = var.storage_conn_string
+    DATABASE_URL                          = var.db_url
+    NEXTAUTH_SECRET                       = var.nextauth_secret
+    GROQ_API_KEY                          = var.groq_api_key
+    GMAIL_USER                            = var.gmail_user
+    GMAIL_APP_PASSWORD                    = var.gmail_app_password
+    AZURE_STORAGE_CONNECTION_STRING       = var.storage_conn_string
+    APPLICATIONINSIGHTS_CONNECTION_STRING = var.app_insights_connection_string
   }
 }
 
@@ -43,10 +44,10 @@ resource "kubernetes_config_map" "app" {
   }
   data = {
     NODE_ENV                = "production"
-    NEXTAUTH_URL            = "http://${var.firewall_ip}"
-    NEXT_PUBLIC_APP_URL     = "http://${var.firewall_ip}"
+    NEXTAUTH_URL            = var.app_url
+    NEXT_PUBLIC_APP_URL     = var.app_url
     AZURE_STORAGE_CONTAINER = "trackpulse"
-    EMAIL_FROM              = "TrackPulse <noreply@trackpulse.local>"
+    EMAIL_FROM              = "TrackPulse <${var.gmail_user}>"
     PORT                    = "8080"
     HOSTNAME                = "0.0.0.0"
   }
@@ -82,12 +83,13 @@ resource "kubernetes_deployment" "app" {
 
           dynamic "env" {
             for_each = {
-              DATABASE_URL                    = "DATABASE_URL"
-              NEXTAUTH_SECRET                 = "NEXTAUTH_SECRET"
-              GROQ_API_KEY                    = "GROQ_API_KEY"
-              GMAIL_USER                      = "GMAIL_USER"
-              GMAIL_APP_PASSWORD              = "GMAIL_APP_PASSWORD"
-              AZURE_STORAGE_CONNECTION_STRING = "AZURE_STORAGE_CONNECTION_STRING"
+              DATABASE_URL                          = "DATABASE_URL"
+              NEXTAUTH_SECRET                       = "NEXTAUTH_SECRET"
+              GROQ_API_KEY                          = "GROQ_API_KEY"
+              GMAIL_USER                            = "GMAIL_USER"
+              GMAIL_APP_PASSWORD                    = "GMAIL_APP_PASSWORD"
+              AZURE_STORAGE_CONNECTION_STRING       = "AZURE_STORAGE_CONNECTION_STRING"
+              APPLICATIONINSIGHTS_CONNECTION_STRING = "APPLICATIONINSIGHTS_CONNECTION_STRING"
             }
             content {
               name = env.key
@@ -114,12 +116,13 @@ resource "kubernetes_deployment" "app" {
 
           dynamic "env" {
             for_each = {
-              DATABASE_URL                    = "DATABASE_URL"
-              NEXTAUTH_SECRET                 = "NEXTAUTH_SECRET"
-              GROQ_API_KEY                    = "GROQ_API_KEY"
-              GMAIL_USER                      = "GMAIL_USER"
-              GMAIL_APP_PASSWORD              = "GMAIL_APP_PASSWORD"
-              AZURE_STORAGE_CONNECTION_STRING = "AZURE_STORAGE_CONNECTION_STRING"
+              DATABASE_URL                          = "DATABASE_URL"
+              NEXTAUTH_SECRET                       = "NEXTAUTH_SECRET"
+              GROQ_API_KEY                          = "GROQ_API_KEY"
+              GMAIL_USER                            = "GMAIL_USER"
+              GMAIL_APP_PASSWORD                    = "GMAIL_APP_PASSWORD"
+              AZURE_STORAGE_CONNECTION_STRING       = "AZURE_STORAGE_CONNECTION_STRING"
+              APPLICATIONINSIGHTS_CONNECTION_STRING = "APPLICATIONINSIGHTS_CONNECTION_STRING"
             }
             content {
               name = env.key
@@ -134,7 +137,7 @@ resource "kubernetes_deployment" "app" {
 
           readiness_probe {
             http_get {
-              path = "/"
+              path = "/api/health"
               port = 8080
             }
             initial_delay_seconds = 15
@@ -144,7 +147,7 @@ resource "kubernetes_deployment" "app" {
 
           liveness_probe {
             http_get {
-              path = "/"
+              path = "/api/health"
               port = 8080
             }
             initial_delay_seconds = 30
@@ -169,11 +172,10 @@ resource "kubernetes_service" "app" {
   }
   spec {
     selector = { app = "trackpulse" }
-    type     = "NodePort"
+    type     = "LoadBalancer"
     port {
       port        = 80
       target_port = 8080
-      node_port   = 30080
     }
   }
 }

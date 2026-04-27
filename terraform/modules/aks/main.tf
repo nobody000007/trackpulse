@@ -19,8 +19,6 @@ resource "azurerm_kubernetes_cluster" "main" {
 
   network_profile {
     network_plugin = "azure"
-    outbound_type  = "userDefinedRouting"
+    outbound_type  = "loadBalancer"
   }
-
-  depends_on = [var.firewall_id, var.route_table_id]
 }

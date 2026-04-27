@@ -11,7 +11,6 @@ variables:
 
 steps:
 
-  # Step 1: Build the Docker image and push it to ACR
   - task: Docker@2
     displayName: Build and push image to ACR
     inputs:
@@ -22,15 +21,14 @@ steps:
       tags: latest
       arguments: --provenance=false
 
-  # Step 2: Deploy the updated image to AKS
   - task: KubernetesManifest@1
-    displayName: Deploy app to AKS
+    displayName: Deploy to AKS
     inputs:
       action: deploy
       connectionType: azureResourceManager
       azureSubscriptionConnection: azure-service-connection
       azureResourceGroup: $(RESOURCE_GROUP)
-      kubernetesCluster: trackpulse-aks
+      kubernetesCluster: trackpulse-dev-aks
       namespace: trackpulse
       manifests: k8s/08-app-deployment.yaml
       imagePullSecrets: acr-pull-secret
