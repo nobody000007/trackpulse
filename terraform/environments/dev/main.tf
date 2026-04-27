@@ -78,7 +78,6 @@ module "kubernetes" {
   gmail_user                    = var.gmail_user
   gmail_app_password            = var.gmail_app_password
   storage_conn_string           = local.storage_conn
-  app_insights_connection_string = var.app_insights_connection_string
   acr_login_server              = module.acr.login_server
   acr_username                  = module.acr.admin_username
   acr_password                  = module.acr.admin_password
