@@ -16,7 +16,7 @@ resource "azurerm_subnet" "ase" {
   name                 = "snet-ase-${var.environment}"
   resource_group_name  = var.resource_group
   virtual_network_name = azurerm_virtual_network.main.name
-  address_prefixes     = ["10.0.1.0/24"]
+  address_prefixes     = ["10.2.0.0/24"]
 
   delegation {
     name = "ase-delegation"
