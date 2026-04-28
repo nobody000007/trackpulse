@@ -48,6 +48,10 @@ stages:
           $env:ARM_TENANT_ID       = $env:tenantId
           $env:ARM_SUBSCRIPTION_ID = (az account show --query id -o tsv)
 
+          # Register required providers (no-op if already registered)
+          az provider register --namespace Microsoft.Web --wait
+          az provider register --namespace Microsoft.ContainerService --wait
+
           # Clean any stale state before init to guarantee a fresh start
           if (Test-Path ".terraform") { Remove-Item -Recurse -Force ".terraform" }
           if (Test-Path ".terraform.lock.hcl") { Remove-Item -Force ".terraform.lock.hcl" }
@@ -59,6 +63,7 @@ stages:
             -var="nextauth_secret=$(NEXTAUTH_SECRET)" `
             -var="groq_api_key=$(GROQ_API_KEY)" `
             -var="gmail_user=$(GMAIL_USER)" `
+            -var="app_insights_connection_string=$(APP_INSIGHTS_CONNECTION_STRING)" `
             -var="gmail_app_password=$(GMAIL_APP_PASSWORD)" `
             -out=tfplan
 
