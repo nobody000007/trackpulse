@@ -68,6 +68,32 @@ module "storage" {
   replication_type = "LRS"
 }
 
+module "ase" {
+  source         = "../../modules/ase"
+  environment    = local.environment
+  resource_group = local.resource_group
+  ase_subnet_id  = module.networking.ase_subnet_id
+}
+
+module "app_service" {
+  source                        = "../../modules/app_service"
+  environment                   = local.environment
+  resource_group                = local.resource_group
+  location                      = local.location
+  ase_id                        = module.ase.id
+  sku_name                      = "I1v2"
+  acr_login_server              = module.acr.login_server
+  acr_username                  = module.acr.admin_username
+  acr_password                  = module.acr.admin_password
+  db_url                        = local.db_url
+  nextauth_secret               = var.nextauth_secret
+  groq_api_key                  = var.groq_api_key
+  gmail_user                    = var.gmail_user
+  gmail_app_password            = var.gmail_app_password
+  storage_conn_string           = local.storage_conn
+  app_insights_connection_string = var.app_insights_connection_string
+}
+
 module "kubernetes" {
   source                        = "../../modules/kubernetes"
   environment                   = local.environment
