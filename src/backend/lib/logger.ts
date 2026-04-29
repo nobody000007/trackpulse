@@ -11,17 +11,17 @@ function getClient() {
 export const logger = {
   info(message: string, properties?: Record<string, string>) {
     console.log(`[INFO] ${message}`);
-    getClient()?.trackTrace({ message, severity: 1, properties });
+    getClient()?.trackTrace({ message, severity: 'Information', properties });
   },
 
   warn(message: string, properties?: Record<string, string>) {
     console.warn(`[WARN] ${message}`);
-    getClient()?.trackTrace({ message, severity: 2, properties });
+    getClient()?.trackTrace({ message, severity: 'Warning', properties });
   },
 
   error(message: string, error?: Error, properties?: Record<string, string>) {
     console.error(`[ERROR] ${message}`, error);
-    getClient()?.trackTrace({ message, severity: 3, properties });
+    getClient()?.trackTrace({ message, severity: 'Error', properties });
     if (error) getClient()?.trackException({ exception: error, properties });
   },
 
