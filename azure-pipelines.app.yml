@@ -21,6 +21,13 @@ steps:
       tags: latest
       arguments: --provenance=false
 
+  - task: AzureWebAppContainer@1
+    displayName: Deploy to App Service
+    inputs:
+      azureSubscription: azure-service-connection
+      appName: app-trackpulse-dev
+      containers: $(ACR_LOGIN_SERVER)/trackpulse:latest
+
   - task: KubernetesManifest@1
     displayName: Deploy to AKS
     inputs:
