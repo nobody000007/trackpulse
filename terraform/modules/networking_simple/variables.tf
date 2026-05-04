@@ -1,3 +1,3 @@
-variable "environment"    {}
+variable "environment" {}
 variable "resource_group" {}
-variable "location"       {}
+variable "location" {}

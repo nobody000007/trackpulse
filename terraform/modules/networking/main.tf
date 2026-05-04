@@ -27,18 +27,18 @@ resource "azurerm_subnet" "aks" {
 }
 
 resource "azurerm_subnet" "db" {
-  name                 = "db-subnet"
-  resource_group_name  = var.resource_group
-  virtual_network_name = azurerm_virtual_network.main.name
-  address_prefixes     = [var.db_subnet_cidr]
+  name                              = "db-subnet"
+  resource_group_name               = var.resource_group
+  virtual_network_name              = azurerm_virtual_network.main.name
+  address_prefixes                  = [var.db_subnet_cidr]
   private_endpoint_network_policies = "Disabled"
 }
 
 resource "azurerm_subnet" "storage" {
-  name                 = "storage-subnet"
-  resource_group_name  = var.resource_group
-  virtual_network_name = azurerm_virtual_network.main.name
-  address_prefixes     = [var.storage_subnet_cidr]
+  name                              = "storage-subnet"
+  resource_group_name               = var.resource_group
+  virtual_network_name              = azurerm_virtual_network.main.name
+  address_prefixes                  = [var.storage_subnet_cidr]
   private_endpoint_network_policies = "Disabled"
 }
 

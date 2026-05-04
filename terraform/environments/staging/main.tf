@@ -69,17 +69,17 @@ module "storage" {
 }
 
 module "kubernetes" {
-  source                        = "../../modules/kubernetes"
-  environment                   = local.environment
-  app_url                       = var.app_url
-  db_url                        = local.db_url
-  nextauth_secret               = var.nextauth_secret
-  groq_api_key                  = var.groq_api_key
-  gmail_user                    = var.gmail_user
-  gmail_app_password            = var.gmail_app_password
-  storage_conn_string           = local.storage_conn
+  source                         = "../../modules/kubernetes"
+  environment                    = local.environment
+  app_url                        = var.app_url
+  db_url                         = local.db_url
+  nextauth_secret                = var.nextauth_secret
+  groq_api_key                   = var.groq_api_key
+  gmail_user                     = var.gmail_user
+  gmail_app_password             = var.gmail_app_password
+  storage_conn_string            = local.storage_conn
   app_insights_connection_string = var.app_insights_connection_string
-  acr_login_server              = module.acr.login_server
-  acr_username                  = module.acr.admin_username
-  acr_password                  = module.acr.admin_password
+  acr_login_server               = module.acr.login_server
+  acr_username                   = module.acr.admin_username
+  acr_password                   = module.acr.admin_password
 }

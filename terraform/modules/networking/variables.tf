@@ -1,9 +1,9 @@
-variable "environment"               { description = "Environment name (dev/staging/prod)" }
-variable "resource_group"            { description = "Azure resource group" }
-variable "location"                  { description = "Azure region" }
-variable "vnet_cidr"                 { description = "VNet address space" }
-variable "firewall_subnet_cidr"      { description = "AzureFirewallSubnet CIDR" }
+variable "environment" { description = "Environment name (dev/staging/prod)" }
+variable "resource_group" { description = "Azure resource group" }
+variable "location" { description = "Azure region" }
+variable "vnet_cidr" { description = "VNet address space" }
+variable "firewall_subnet_cidr" { description = "AzureFirewallSubnet CIDR" }
 variable "firewall_mgmt_subnet_cidr" { description = "AzureFirewallManagementSubnet CIDR" }
-variable "aks_subnet_cidr"           { description = "AKS subnet CIDR" }
-variable "db_subnet_cidr"            { description = "Database subnet CIDR" }
-variable "storage_subnet_cidr"       { description = "Storage subnet CIDR" }
+variable "aks_subnet_cidr" { description = "AKS subnet CIDR" }
+variable "db_subnet_cidr" { description = "Database subnet CIDR" }
+variable "storage_subnet_cidr" { description = "Storage subnet CIDR" }

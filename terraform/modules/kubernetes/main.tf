@@ -157,7 +157,7 @@ resource "kubernetes_deployment" "app" {
 
           resources {
             requests = { memory = "512Mi", cpu = "250m" }
-            limits   = { memory = "1Gi",   cpu = "1000m" }
+            limits   = { memory = "1Gi", cpu = "1000m" }
           }
         }
       }

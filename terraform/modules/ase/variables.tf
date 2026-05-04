@@ -1,3 +1,3 @@
-variable "environment"    {}
+variable "environment" {}
 variable "resource_group" {}
-variable "ase_subnet_id"  {}
+variable "ase_subnet_id" {}

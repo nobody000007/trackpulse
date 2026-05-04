@@ -76,35 +76,51 @@ module "ase" {
 }
 
 module "app_service" {
-  source                        = "../../modules/app_service"
-  environment                   = local.environment
-  resource_group                = local.resource_group
-  location                      = local.location
-  ase_id                        = module.ase.id
-  sku_name                      = "I1v2"
-  acr_login_server              = module.acr.login_server
-  acr_username                  = module.acr.admin_username
-  acr_password                  = module.acr.admin_password
-  db_url                        = local.db_url
-  nextauth_secret               = var.nextauth_secret
-  groq_api_key                  = var.groq_api_key
-  gmail_user                    = var.gmail_user
-  gmail_app_password            = var.gmail_app_password
-  storage_conn_string           = local.storage_conn
+  source                         = "../../modules/app_service"
+  environment                    = local.environment
+  resource_group                 = local.resource_group
+  location                       = local.location
+  ase_id                         = module.ase.id
+  sku_name                       = "I1v2"
+  acr_login_server               = module.acr.login_server
+  acr_username                   = module.acr.admin_username
+  acr_password                   = module.acr.admin_password
+  db_url                         = local.db_url
+  nextauth_secret                = var.nextauth_secret
+  groq_api_key                   = var.groq_api_key
+  gmail_user                     = var.gmail_user
+  gmail_app_password             = var.gmail_app_password
+  storage_conn_string            = local.storage_conn
   app_insights_connection_string = var.app_insights_connection_string
 }
 
 module "kubernetes" {
-  source                        = "../../modules/kubernetes"
-  environment                   = local.environment
-  app_url                       = var.app_url
-  db_url                        = local.db_url
-  nextauth_secret               = var.nextauth_secret
-  groq_api_key                  = var.groq_api_key
-  gmail_user                    = var.gmail_user
-  gmail_app_password            = var.gmail_app_password
-  storage_conn_string           = local.storage_conn
-  acr_login_server              = module.acr.login_server
-  acr_username                  = module.acr.admin_username
-  acr_password                  = module.acr.admin_password
+  source              = "../../modules/kubernetes"
+  environment         = local.environment
+  app_url             = var.app_url
+  db_url              = local.db_url
+  nextauth_secret     = var.nextauth_secret
+  groq_api_key        = var.groq_api_key
+  gmail_user          = var.gmail_user
+  gmail_app_password  = var.gmail_app_password
+  storage_conn_string = local.storage_conn
+  acr_login_server    = module.acr.login_server
+  acr_username        = module.acr.admin_username
+  acr_password        = module.acr.admin_password
+}
+
+data "azurerm_application_insights" "main" {
+  name                = "appi-trackpulse-${local.environment}"
+  resource_group_name = local.resource_group
+}
+
+module "apim" {
+  source                           = "../../modules/apim"
+  environment                      = local.environment
+  resource_group                   = local.resource_group
+  location                         = local.location
+  publisher_email                  = var.gmail_user
+  backend_url                      = "app-trackpulse-${local.environment}.${module.ase.dns_suffix}"
+  app_insights_id                  = data.azurerm_application_insights.main.id
+  app_insights_instrumentation_key = data.azurerm_application_insights.main.instrumentation_key
 }
