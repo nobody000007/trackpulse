@@ -55,27 +55,3 @@ resource "azurerm_api_management_api_policy" "trackpulse" {
   resource_group_name = var.resource_group
   xml_content         = file("${path.module}/policies/api-policy.xml")
 }
-
-resource "azurerm_api_management_logger" "appinsights" {
-  name                = "appinsights-logger"
-  api_management_name = azurerm_api_management.main.name
-  resource_group_name = var.resource_group
-  resource_id         = var.app_insights_id
-
-  application_insights {
-    instrumentation_key = var.app_insights_instrumentation_key
-  }
-}
-
-resource "azurerm_api_management_diagnostic" "appinsights" {
-  identifier               = "applicationinsights"
-  resource_group_name      = var.resource_group
-  api_management_name      = azurerm_api_management.main.name
-  api_management_logger_id = azurerm_api_management_logger.appinsights.id
-
-  sampling_percentage       = 100
-  always_log_errors         = true
-  log_client_ip             = true
-  verbosity                 = "information"
-  http_correlation_protocol = "W3C"
-}

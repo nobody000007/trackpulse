@@ -109,18 +109,11 @@ module "kubernetes" {
   acr_password        = module.acr.admin_password
 }
 
-data "azurerm_application_insights" "main" {
-  name                = "appi-trackpulse-${local.environment}"
-  resource_group_name = local.resource_group
-}
-
 module "apim" {
-  source                           = "../../modules/apim"
-  environment                      = local.environment
-  resource_group                   = local.resource_group
-  location                         = local.location
-  publisher_email                  = var.gmail_user
-  backend_url                      = "app-trackpulse-${local.environment}.${module.ase.dns_suffix}"
-  app_insights_id                  = data.azurerm_application_insights.main.id
-  app_insights_instrumentation_key = data.azurerm_application_insights.main.instrumentation_key
+  source          = "../../modules/apim"
+  environment     = local.environment
+  resource_group  = local.resource_group
+  location        = local.location
+  publisher_email = var.gmail_user
+  backend_url     = "app-trackpulse-${local.environment}.${module.ase.dns_suffix}"
 }
