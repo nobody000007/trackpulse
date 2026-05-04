@@ -5,9 +5,7 @@
       <value>TrackPulse-APIM</value>
     </set-header>
     <rate-limit calls="10" renewal-period="60" />
-    <cache-lookup vary-by-developer="false" vary-by-developer-groups="false" downstream-caching-type="none" duration="30">
-      <vary-by-header>Accept</vary-by-header>
-    </cache-lookup>
+    <cache-lookup vary-by-developer="false" vary-by-developer-groups="false" downstream-caching-type="none" />
   </inbound>
   <backend>
     <base />
