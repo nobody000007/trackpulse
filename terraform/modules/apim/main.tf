@@ -41,12 +41,6 @@ resource "azurerm_api_management_api_operation" "test_error" {
   display_name        = "Test Error"
   method              = "GET"
   url_template        = "/api/test-error"
-
-  template_parameter {
-    name     = "type"
-    type     = "string"
-    required = false
-  }
 }
 
 resource "azurerm_api_management_api_policy" "trackpulse" {
