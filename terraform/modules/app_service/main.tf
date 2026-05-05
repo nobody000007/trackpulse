@@ -23,6 +23,16 @@ resource "azurerm_linux_web_app" "main" {
       docker_registry_username = var.acr_username
       docker_registry_password = var.acr_password
     }
+
+    dynamic "ip_restriction" {
+      for_each = var.allowed_ip_addresses
+      content {
+        name       = "Allow-APIM-${ip_restriction.key}"
+        priority   = 100 + ip_restriction.key
+        action     = "Allow"
+        ip_address = "${ip_restriction.value}/32"
+      }
+    }
   }
 
   app_settings = {

@@ -12,3 +12,7 @@ variable "gmail_user" {}
 variable "gmail_app_password" { sensitive = true }
 variable "storage_conn_string" { sensitive = true }
 variable "app_insights_connection_string" { sensitive = true }
+variable "allowed_ip_addresses" {
+  type    = list(string)
+  default = []
+}

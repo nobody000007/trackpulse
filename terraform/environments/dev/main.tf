@@ -59,6 +59,7 @@ module "app_service" {
   gmail_app_password             = var.gmail_app_password
   storage_conn_string            = local.storage_conn
   app_insights_connection_string = var.app_insights_connection_string
+  allowed_ip_addresses           = module.apim.public_ip_addresses
 }
 
 module "apim" {
