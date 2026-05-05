@@ -6,6 +6,15 @@ resource "azurerm_api_management" "main" {
   publisher_email     = var.publisher_email
   sku_name            = "Developer_1"
 
+  virtual_network_type = var.subnet_id != null ? "External" : "None"
+
+  dynamic "virtual_network_configuration" {
+    for_each = var.subnet_id != null ? [1] : []
+    content {
+      subnet_id = var.subnet_id
+    }
+  }
+
   identity {
     type = "SystemAssigned"
   }

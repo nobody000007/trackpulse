@@ -7,11 +7,12 @@ resource "azurerm_service_plan" "main" {
 }
 
 resource "azurerm_linux_web_app" "main" {
-  name                = "app-trackpulse-${var.environment}"
-  resource_group_name = var.resource_group
-  location            = var.location
-  service_plan_id     = azurerm_service_plan.main.id
-  https_only          = true
+  name                          = "app-trackpulse-${var.environment}"
+  resource_group_name           = var.resource_group
+  location                      = var.location
+  service_plan_id               = azurerm_service_plan.main.id
+  https_only                    = true
+  public_network_access_enabled = var.public_network_access_enabled
 
   site_config {
     health_check_path                 = "/api/health"
@@ -63,5 +64,39 @@ resource "azurerm_linux_web_app" "main" {
         retention_in_mb   = 100
       }
     }
+  }
+}
+
+resource "azurerm_private_dns_zone" "app_service" {
+  count               = var.pe_subnet_id != null ? 1 : 0
+  name                = "privatelink.azurewebsites.net"
+  resource_group_name = var.resource_group
+}
+
+resource "azurerm_private_dns_zone_virtual_network_link" "app_service" {
+  count                 = var.pe_subnet_id != null ? 1 : 0
+  name                  = "vnet-link-${var.environment}"
+  resource_group_name   = var.resource_group
+  private_dns_zone_name = azurerm_private_dns_zone.app_service[0].name
+  virtual_network_id    = var.vnet_id
+}
+
+resource "azurerm_private_endpoint" "app_service" {
+  count               = var.pe_subnet_id != null ? 1 : 0
+  name                = "pe-app-trackpulse-${var.environment}"
+  location            = var.location
+  resource_group_name = var.resource_group
+  subnet_id           = var.pe_subnet_id
+
+  private_service_connection {
+    name                           = "psc-app-trackpulse"
+    is_manual_connection           = false
+    private_connection_resource_id = azurerm_linux_web_app.main.id
+    subresource_names              = ["sites"]
+  }
+
+  private_dns_zone_group {
+    name                 = "default"
+    private_dns_zone_ids = [azurerm_private_dns_zone.app_service[0].id]
   }
 }

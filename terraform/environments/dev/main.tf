@@ -18,6 +18,13 @@ locals {
   storage_conn = "DefaultEndpointsProtocol=https;AccountName=${module.storage.name};AccountKey=${module.storage.primary_access_key};EndpointSuffix=core.windows.net"
 }
 
+module "networking" {
+  source         = "../../modules/networking_simple"
+  environment    = local.environment
+  resource_group = local.resource_group
+  location       = local.location
+}
+
 module "acr" {
   source         = "../../modules/acr"
   environment    = local.environment
@@ -59,7 +66,9 @@ module "app_service" {
   gmail_app_password             = var.gmail_app_password
   storage_conn_string            = local.storage_conn
   app_insights_connection_string = var.app_insights_connection_string
-  allowed_ip_addresses           = concat(module.apim.public_ip_addresses, ["70.52.17.126"])
+  public_network_access_enabled  = false
+  vnet_id                        = module.networking.vnet_id
+  pe_subnet_id                   = module.networking.pe_subnet_id
 }
 
 module "apim" {
@@ -69,4 +78,5 @@ module "apim" {
   location        = local.location
   publisher_email = var.gmail_user
   backend_url     = module.app_service.default_hostname
+  subnet_id       = module.networking.apim_subnet_id
 }

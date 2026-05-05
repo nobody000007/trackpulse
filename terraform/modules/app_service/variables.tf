@@ -16,3 +16,15 @@ variable "allowed_ip_addresses" {
   type    = list(string)
   default = []
 }
+variable "vnet_id" {
+  type    = string
+  default = null
+}
+variable "pe_subnet_id" {
+  type    = string
+  default = null
+}
+variable "public_network_access_enabled" {
+  type    = bool
+  default = true
+}
