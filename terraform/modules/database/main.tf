@@ -23,7 +23,7 @@ resource "azurerm_postgresql_flexible_server_firewall_rule" "allow_azure_service
 }
 
 resource "azurerm_private_dns_zone" "postgres" {
-  count               = var.pe_subnet_id != null ? 1 : 0
+  count               = var.private_endpoint_enabled ? 1 : 0
   name                = "privatelink.postgres.database.azure.com"
   resource_group_name = var.resource_group
 }
@@ -37,7 +37,7 @@ resource "azurerm_private_dns_zone_virtual_network_link" "postgres" {
 }
 
 resource "azurerm_private_endpoint" "postgres" {
-  count               = var.pe_subnet_id != null ? 1 : 0
+  count               = var.private_endpoint_enabled ? 1 : 0
   name                = "pe-postgres-${var.environment}"
   location            = var.location
   resource_group_name = var.resource_group

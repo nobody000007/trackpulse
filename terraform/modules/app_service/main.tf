@@ -71,7 +71,7 @@ resource "azurerm_linux_web_app" "main" {
 }
 
 resource "azurerm_private_dns_zone" "app_service" {
-  count               = var.pe_subnet_id != null ? 1 : 0
+  count               = var.private_endpoint_enabled ? 1 : 0
   name                = "privatelink.azurewebsites.net"
   resource_group_name = var.resource_group
 }
@@ -85,7 +85,7 @@ resource "azurerm_private_dns_zone_virtual_network_link" "app_service" {
 }
 
 resource "azurerm_private_endpoint" "app_service" {
-  count               = var.pe_subnet_id != null ? 1 : 0
+  count               = var.private_endpoint_enabled ? 1 : 0
   name                = "pe-app-trackpulse-${var.environment}"
   location            = var.location
   resource_group_name = var.resource_group

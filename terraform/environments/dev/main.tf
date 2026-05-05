@@ -43,6 +43,7 @@ module "database" {
   public_network_access_enabled = false
   vnet_id                       = module.networking.vnet_id
   pe_subnet_id                  = module.networking.pe_subnet_id
+  private_endpoint_enabled      = true
 }
 
 module "storage" {
@@ -54,6 +55,7 @@ module "storage" {
   public_network_access_enabled = false
   vnet_id                       = module.networking.vnet_id
   pe_subnet_id                  = module.networking.pe_subnet_id
+  private_endpoint_enabled      = true
 }
 
 module "app_service" {
@@ -76,6 +78,7 @@ module "app_service" {
   vnet_id                        = module.networking.vnet_id
   pe_subnet_id                   = module.networking.pe_subnet_id
   app_subnet_id                  = module.networking.app_subnet_id
+  private_endpoint_enabled       = true
 }
 
 module "apim" {

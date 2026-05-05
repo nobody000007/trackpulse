@@ -14,3 +14,7 @@ variable "pe_subnet_id" {
   type    = string
   default = null
 }
+variable "private_endpoint_enabled" {
+  type    = bool
+  default = false
+}
