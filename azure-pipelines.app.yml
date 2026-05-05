@@ -27,16 +27,3 @@ steps:
       azureSubscription: azure-service-connection
       appName: app-trackpulse-dev
       containers: $(ACR_LOGIN_SERVER)/trackpulse:latest
-
-  - task: KubernetesManifest@1
-    displayName: Deploy to AKS
-    inputs:
-      action: deploy
-      connectionType: azureResourceManager
-      azureSubscriptionConnection: azure-service-connection
-      azureResourceGroup: $(RESOURCE_GROUP)
-      kubernetesCluster: trackpulse-dev-aks
-      namespace: trackpulse
-      manifests: k8s/08-app-deployment.yaml
-      imagePullSecrets: acr-pull-secret
-      containers: $(ACR_LOGIN_SERVER)/trackpulse:latest
