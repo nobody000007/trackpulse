@@ -33,21 +33,27 @@ module "acr" {
 }
 
 module "database" {
-  source         = "../../modules/database"
-  environment    = local.environment
-  resource_group = local.resource_group
-  location       = local.location
-  admin_password = var.db_admin_password
-  sku_name       = "B_Standard_B1ms"
-  storage_mb     = 32768
+  source                        = "../../modules/database"
+  environment                   = local.environment
+  resource_group                = local.resource_group
+  location                      = local.location
+  admin_password                = var.db_admin_password
+  sku_name                      = "B_Standard_B1ms"
+  storage_mb                    = 32768
+  public_network_access_enabled = false
+  vnet_id                       = module.networking.vnet_id
+  pe_subnet_id                  = module.networking.pe_subnet_id
 }
 
 module "storage" {
-  source           = "../../modules/storage"
-  environment      = local.environment
-  resource_group   = local.resource_group
-  location         = local.location
-  replication_type = "LRS"
+  source                        = "../../modules/storage"
+  environment                   = local.environment
+  resource_group                = local.resource_group
+  location                      = local.location
+  replication_type              = "LRS"
+  public_network_access_enabled = false
+  vnet_id                       = module.networking.vnet_id
+  pe_subnet_id                  = module.networking.pe_subnet_id
 }
 
 module "app_service" {
@@ -69,6 +75,7 @@ module "app_service" {
   public_network_access_enabled  = false
   vnet_id                        = module.networking.vnet_id
   pe_subnet_id                   = module.networking.pe_subnet_id
+  app_subnet_id                  = module.networking.app_subnet_id
 }
 
 module "apim" {

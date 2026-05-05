@@ -28,3 +28,7 @@ variable "public_network_access_enabled" {
   type    = bool
   default = true
 }
+variable "app_subnet_id" {
+  type    = string
+  default = null
+}

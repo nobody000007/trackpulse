@@ -20,6 +20,21 @@ resource "azurerm_subnet" "pe" {
   private_endpoint_network_policies = "Disabled"
 }
 
+resource "azurerm_subnet" "app" {
+  name                 = "snet-app-${var.environment}"
+  resource_group_name  = var.resource_group
+  virtual_network_name = azurerm_virtual_network.main.name
+  address_prefixes     = ["10.0.3.0/27"]
+
+  delegation {
+    name = "appservice-delegation"
+    service_delegation {
+      name    = "Microsoft.Web/serverFarms"
+      actions = ["Microsoft.Network/virtualNetworks/subnets/action"]
+    }
+  }
+}
+
 resource "azurerm_network_security_group" "apim" {
   name                = "nsg-apim-${var.environment}"
   resource_group_name = var.resource_group

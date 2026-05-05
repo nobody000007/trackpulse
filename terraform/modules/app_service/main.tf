@@ -13,6 +13,7 @@ resource "azurerm_linux_web_app" "main" {
   service_plan_id               = azurerm_service_plan.main.id
   https_only                    = true
   public_network_access_enabled = var.public_network_access_enabled
+  virtual_network_subnet_id     = var.app_subnet_id
 
   site_config {
     health_check_path                 = "/api/health"
@@ -52,6 +53,8 @@ resource "azurerm_linux_web_app" "main" {
     "WEBSITES_PORT"                         = "8080"
     "PORT"                                  = "8080"
     "NODE_ENV"                              = "production"
+    "WEBSITE_VNET_ROUTE_ALL"                = var.app_subnet_id != null ? "1" : "0"
+    "WEBSITE_DNS_SERVER"                    = var.app_subnet_id != null ? "168.63.129.16" : ""
   }
 
   logs {
