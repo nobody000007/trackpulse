@@ -1,8 +1,7 @@
 variable "environment" {}
 variable "resource_group" {}
 variable "location" {}
-variable "ase_id" {}
-variable "sku_name" { default = "I1v2" }
+variable "sku_name" { default = "B1" }
 variable "acr_login_server" {}
 variable "acr_username" {}
 variable "acr_password" { sensitive = true }

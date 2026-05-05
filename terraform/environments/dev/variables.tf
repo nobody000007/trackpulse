@@ -7,4 +7,3 @@ variable "app_insights_connection_string" {
   sensitive = true
   default   = ""
 }
-variable "app_url" { default = "http://localhost" }

@@ -1,10 +1,9 @@
 resource "azurerm_service_plan" "main" {
-  name                       = "asp-trackpulse-${var.environment}"
-  resource_group_name        = var.resource_group
-  location                   = var.location
-  os_type                    = "Linux"
-  sku_name                   = var.sku_name
-  app_service_environment_id = var.ase_id
+  name                = "asp-trackpulse-${var.environment}"
+  resource_group_name = var.resource_group
+  location            = var.location
+  os_type             = "Linux"
+  sku_name            = var.sku_name
 }
 
 resource "azurerm_linux_web_app" "main" {
