@@ -14,7 +14,7 @@ resource "azurerm_private_dns_zone" "blob" {
 }
 
 resource "azurerm_private_dns_zone_virtual_network_link" "blob" {
-  count                 = var.pe_subnet_id != null ? 1 : 0
+  count                 = var.private_endpoint_enabled ? 1 : 0
   name                  = "vnet-link-${var.environment}"
   resource_group_name   = var.resource_group
   private_dns_zone_name = azurerm_private_dns_zone.blob[0].name
