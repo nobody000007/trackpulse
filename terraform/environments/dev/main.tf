@@ -89,4 +89,5 @@ module "apim" {
   publisher_email = var.gmail_user
   backend_url     = module.app_service.default_hostname
   subnet_id       = module.networking.apim_subnet_id
+  depends_on      = [module.networking]
 }

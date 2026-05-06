@@ -18,6 +18,7 @@ resource "azurerm_linux_web_app" "main" {
   site_config {
     health_check_path                 = "/api/health"
     health_check_eviction_time_in_min = 5
+    vnet_route_all_enabled            = var.app_subnet_id != null
 
     application_stack {
       docker_image_name        = "trackpulse:latest"
@@ -53,7 +54,6 @@ resource "azurerm_linux_web_app" "main" {
     "WEBSITES_PORT"                         = "8080"
     "PORT"                                  = "8080"
     "NODE_ENV"                              = "production"
-    "WEBSITE_VNET_ROUTE_ALL"                = var.app_subnet_id != null ? "1" : "0"
     "WEBSITE_DNS_SERVER"                    = var.app_subnet_id != null ? "168.63.129.16" : ""
   }
 
